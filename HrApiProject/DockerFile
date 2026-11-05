@@ -1,0 +1,22 @@
+# ETAPA 1: Construcción (El SDK pesado para compilar)
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+# Copiamos el archivo del proyecto y restauramos las dependencias (NuGet)
+COPY ["HrApiProject.csproj", "./"]
+RUN dotnet restore "./HrApiProject.csproj"
+
+# Copiamos el resto del código fuente y lo publicamos
+COPY . .
+RUN dotnet publish "HrApiProject.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+# ETAPA 2: Producción (El Runtime liviano para ejecutar)
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+WORKDIR /app
+EXPOSE 8080
+
+# Traemos ÚNICAMENTE los archivos .dll generados en la Etapa 1
+COPY --from=build /app/publish .
+
+# Comando de arranque: "Ejecuta este .dll cuando el contenedor se encienda"
+ENTRYPOINT ["dotnet", "HrApiProject.dll"]

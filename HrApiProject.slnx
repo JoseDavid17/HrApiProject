@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="HrApiProject/HrApiProject.csproj" />
+  <Project Path="HrApiProyect.Tests/HrApiProyect.Tests.csproj" Id="bdc80cfe-0a92-4d0d-9056-c6342ddb42be" />
+</Solution>

@@ -2,7 +2,7 @@
 
 namespace HrApiProject.DTOs
 {
-    public class EmployeeCreateDto
+    public sealed class EmployeeCreateDto
     {
 
         [Required(ErrorMessage = "El Id del empleado es obligatorio", ErrorMessageResourceName = "Validación en empleados")]

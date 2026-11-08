@@ -1,14 +1,14 @@
-﻿using HrApiProject.Data;
-using HrApiProject.Services;
+﻿using HrApiProject.Services;
 using HrApiProject.DTOs;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace HrApiProject.Controllers
 {
     
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class RegionController : ControllerBase
     {
         private readonly IRegionService _regionService;

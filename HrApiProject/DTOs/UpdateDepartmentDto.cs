@@ -2,7 +2,7 @@
 
 namespace HrApiProject.DTOs
 {
-    public class UpdateDepartmentDto
+    public sealed class UpdateDepartmentDto
     {
         //[Required(ErrorMessage = "El id del departamento debe ser proporcionado", ErrorMessageResourceName = " Validación en departamentos")]
         //public int DepartamentId { get; set; }

@@ -3,6 +3,7 @@ using HrApiProject.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Oracle.EntityFrameworkCore.Internal;
 using System.Text;
 using System.Text.Json.Serialization;
 
@@ -59,6 +60,12 @@ builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<IEmployeeService, EmployeeServices>();
 
 builder.Services.AddScoped<IJobHistoryService, JobHistoryServices>();
+
+builder.Services.AddScoped<ICountryService, CountryService>();
+
+builder.Services.AddScoped<IJobService, JobServices>();
+
+
 
 
 //builder.Services

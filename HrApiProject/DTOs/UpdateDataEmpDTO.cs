@@ -2,7 +2,7 @@
 
 namespace HrApiProject.DTOs
 {
-    public class UpdateDataEmpDTO
+    public sealed class UpdateDataEmpDTO
     {
         [StringLength(20, ErrorMessage = "El nombre del empleado no puede superar los 20 carácteres.", ErrorMessageResourceName = "Validación en empleados")]
         public string? FirstName { get; set; }

@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 
 namespace HrApiProject.Domain
 {
@@ -12,6 +13,14 @@ namespace HrApiProject.Domain
 
         [Column("JOB_TITLE")]
         public string JobTitle { get; set; } = null!;
+
+        [Column("MIN_SALARY")]
+        [Precision(6, 0)]
+        public decimal? MinSalary { get; set; }
+
+        [Column("MAX_SALARY")]
+        [Precision(6, 0)]
+        public decimal? MaxSalary { get; set; }
 
     }
 }

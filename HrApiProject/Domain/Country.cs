@@ -15,7 +15,7 @@ namespace HrApiProject.Domain
         public string? CountryName { get; set; }
 
         [Column("REGION_ID")]
-        public int RegionId { get; set; }
+        public int? RegionId { get; set; }
 
         [ForeignKey("RegionId")]
         public Region? Region { get; set; }

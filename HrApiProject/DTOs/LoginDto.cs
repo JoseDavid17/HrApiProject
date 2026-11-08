@@ -2,7 +2,7 @@
 
 namespace HrApiProject.DTOs
 {
-    public class LoginDto
+    public sealed class LoginDto
     {
         [Required(ErrorMessage = "El usuario es obligatorio")]
         public string Username { get; set; } = null!;

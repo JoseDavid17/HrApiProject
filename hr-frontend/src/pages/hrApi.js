@@ -1,0 +1,94 @@
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_HR_API_URL || 'https://localhost:7078/api',
+});
+
+const sessionKey = 'hr-api-token';
+const sessionChange = 'hr-session-change';
+const pageSize = 50;
+
+export function sessionExpiresAt(token) {
+  try {
+    const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const { exp } = JSON.parse(atob(payload));
+    return Number.isFinite(exp) ? exp * 1000 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function getSessionToken() {
+  const token = sessionStorage.getItem(sessionKey);
+  return token && sessionExpiresAt(token) > Date.now() ? token : null;
+}
+
+export function subscribeToSession(onChange) {
+  window.addEventListener(sessionChange, onChange);
+  return () => window.removeEventListener(sessionChange, onChange);
+}
+
+export function signOut() {
+  sessionStorage.removeItem(sessionKey);
+  window.dispatchEvent(new Event(sessionChange));
+}
+
+export async function signIn(credentials) {
+  const { data } = await api.post('/Auth/login', credentials);
+  if (typeof data?.token !== 'string' || sessionExpiresAt(data.token) <= Date.now()) {
+    throw new Error('La API no devolvió un token de sesión válido.');
+  }
+  sessionStorage.setItem(sessionKey, data.token);
+  window.dispatchEvent(new Event(sessionChange));
+}
+
+api.interceptors.request.use((request) => {
+  if (request.url !== '/Auth/login') {
+    const token = getSessionToken();
+    if (token) request.headers.set('Authorization', `Bearer ${token}`);
+  }
+  return request;
+});
+
+api.interceptors.response.use(undefined, (error) => {
+  const currentToken = sessionStorage.getItem(sessionKey);
+  // An older request must not invalidate a newer session.
+  if (error.response?.status === 401 && currentToken &&
+      error.config?.headers?.get('Authorization') === `Bearer ${currentToken}`) {
+    signOut();
+  }
+  return Promise.reject(error);
+});
+
+export async function listRecords({ endpoint, paginated }, signal) {
+  const records = [];
+  let pageNumber = 1;
+  let page;
+
+  // The API returns arrays without totals. Collect all pages so the table
+  // can search, filter and sort across the complete catalog.
+  do {
+    const { data } = await api.get(`/${endpoint}`, {
+      signal,
+      params: paginated ? { pageNumber, pageSize } : undefined,
+    });
+    if (!Array.isArray(data)) throw new Error('La API no devolvió una lista de registros.');
+    page = data;
+    records.push(...page);
+    pageNumber += 1;
+  } while (paginated && page.length === pageSize);
+
+  return records;
+}
+
+export async function createRecord(endpoint, values) {
+  await api.post(`/${endpoint}`, values);
+}
+
+export function apiErrorMessage(error, fallback) {
+  const status = error.response?.status;
+  if (status === 403) return 'Tu cuenta no tiene permisos para realizar esta operación.';
+  const data = error.response?.data;
+  const validation = Object.values(data?.errors ?? {}).flat().find((message) => typeof message === 'string');
+  return validation ?? (typeof data?.message === 'string' ? data.message : fallback);
+}

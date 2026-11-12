@@ -1,0 +1,20 @@
+:root {
+  font-family: Inter, "Segoe UI", sans-serif;
+  color: #252532;
+  background: #fff;
+  color-scheme: light;
+  font-synthesis: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+:focus-visible {
+  outline: 2px solid #52525b;
+  outline-offset: 2px;
+}

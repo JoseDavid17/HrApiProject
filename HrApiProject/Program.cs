@@ -3,9 +3,7 @@ using HrApiProject.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Oracle.EntityFrameworkCore.Internal;
 using System.Text;
-using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -65,7 +63,17 @@ builder.Services.AddScoped<ICountryService, CountryService>();
 
 builder.Services.AddScoped<IJobService, JobServices>();
 
+// cors
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("ReactFrontEnd", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173")
+        .AllowAnyHeader()
+        .AllowAnyMethod();
+    });
+});
 
 
 //builder.Services
@@ -75,7 +83,6 @@ builder.Services.AddScoped<IJobService, JobServices>();
 //        options.JsonSerializerOptions.DefaultIgnoreCondition =
 //            JsonIgnoreCondition.WhenWritingNull;
 //    });
-
 
 var app = builder.Build();
 
@@ -93,6 +100,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("ReactFrontEnd");
 
 app.UseAuthentication();
 app.UseAuthorization();

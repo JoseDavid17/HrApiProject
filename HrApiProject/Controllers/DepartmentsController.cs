@@ -38,6 +38,33 @@ namespace HrApiProject.Controllers
             return Ok(departments);
         }
 
+        [HttpGet("{id}")]
+
+        public async Task<ActionResult<DepartmentDto?>> GetDeptoById([FromRoute] int id)
+        {
+            var deptoid = await _departmentService.GetDepartmentByIdAsync(id);
+
+            if(deptoid == null)
+            {
+                return NotFound(new { message = "No existe un departamento con dicho id" });
+            }
+
+            return Ok(deptoid);
+        }
+
+
+        [HttpPost]
+
+        public async Task<ActionResult<DepartmentDto>> CreateDepartments(DepartmentCreateDto departmentCreateDto)
+        {
+            var Creatdepto = await _departmentService.CreateDepartments(departmentCreateDto);
+
+            return CreatedAtAction(
+                   nameof(GetDeptoById),
+                   new { id = Creatdepto.DepartmentId },
+                   Creatdepto);
+        }
+
         [HttpGet("departamentos")]
         public async Task<ActionResult<IEnumerable<Departments>>> GetDepartmentss()
         {
@@ -60,6 +87,32 @@ namespace HrApiProject.Controllers
             return NoContent();
         }
 
+        [HttpDelete("{id}")]
 
+        public async Task<ActionResult> DeleteDepto([FromRoute] int id)
+        {
+            var succes = await _departmentService.EliminarDepto(id);
+
+            if (!succes)
+            {
+                return NotFound(new { message = $"No se encontró un departamento con el {id} para eliminarlo" });
+            }
+
+            return NoContent();
+        }
+
+        [HttpPatch("ChangeManager/{id}")]
+        public async Task<ActionResult> CambiarManager([FromRoute] int id, [FromBody] int manager_id)
+        {
+            var ChangeManager = await _departmentService.ChangeManager(id, manager_id);
+
+            if(!ChangeManager)
+            {
+                return NotFound(new { message = $"No se encontró el departamento {id} o el empleado {manager_id}." });
+            }
+
+            return NoContent();
+        }
+        
     }
 }

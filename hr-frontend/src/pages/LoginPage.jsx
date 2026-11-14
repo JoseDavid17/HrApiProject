@@ -5,10 +5,9 @@ import HrFooter from '../layout/HrFooter';
 import { apiErrorMessage, signIn } from './hrApi';
 import './LoginPage.css';
 
-export default function LoginPage() {
+export default function LoginPage({ notify }) {
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -18,16 +17,15 @@ export default function LoginPage() {
     const username = String(form.get('username') ?? '').trim();
     const password = String(form.get('password') ?? '');
     if (!username || !password) {
-      setError('Ingresa tu usuario y contraseña.');
+      notify('warn', 'Campos obligatorios', 'Ingresa tu usuario y contraseña.');
       return;
     }
 
     setBusy(true);
-    setError('');
     try {
       await signIn({ username, password });
     } catch (requestError) {
-      setError(requestError.response?.status === 401
+      notify('error', 'No se pudo iniciar sesión', requestError.response?.status === 401
         ? 'Usuario o contraseña incorrectos.'
         : apiErrorMessage(requestError, 'No se pudo iniciar sesión. Inténtalo de nuevo.'));
     } finally {
@@ -48,7 +46,7 @@ export default function LoginPage() {
           <h1 id="login-title">Iniciar sesión</h1>
           <p className="hr-login__description">Ingresa tus credenciales para acceder al sistema de Recursos Humanos.</p>
 
-          <form className="hr-login__form" onSubmit={handleSubmit} aria-busy={busy}>
+          <form className="hr-login__form" noValidate onSubmit={handleSubmit} aria-busy={busy}>
             <div className="hr-login__field">
               <label htmlFor="login-username">Usuario</label>
               <InputText id="login-username" name="username" autoComplete="username"
@@ -66,7 +64,6 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
-            {error && <p className="hr-login__error" role="alert">{error}</p>}
             <Button type="submit" label={busy ? 'Ingresando…' : 'Iniciar sesión'}
               loading={busy} className="hr-login__submit" />
           </form>

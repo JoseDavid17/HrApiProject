@@ -22,7 +22,6 @@ namespace HrApiProject.Services
         {
             var regionEntity = new Region
             {
-                RegionId = regionDto.RegionId,
                 RegionName = regionDto.RegionName
             };
 
@@ -31,7 +30,6 @@ namespace HrApiProject.Services
 
             return new RegionDto
             {
-                Id = regionEntity.RegionId,
                 Name = regionEntity.RegionName
             };
 

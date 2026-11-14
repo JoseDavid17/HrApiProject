@@ -22,5 +22,8 @@ namespace HrApiProject.Domain
         [ForeignKey("LocationId")]
         public Location? Location { get; set; }
 
+        [ForeignKey("ManagerId")]
+        public Employees Employees { get; set; } = null!;
+
     }
 }

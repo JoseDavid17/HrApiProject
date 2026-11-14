@@ -42,13 +42,15 @@ function initialFilters(columns) {
   };
 }
 
-function cellValue(record, field) {
-  return field.split('.').reduce((value, key) => value?.[key], record);
+function cellValue(record, { field, format }) {
+  const value = field.split('.').reduce((current, key) => current?.[key], record);
+  if (value == null || value === '') return '—';
+  return format ? format(value) : value;
 }
 
 function TableCell({ record, column }) {
-  const value = cellValue(record, column.field);
-  if (!column.avatar || !value) return value ?? '—';
+  const value = cellValue(record, column);
+  if (!column.avatar || value === '—') return value;
 
   const initials = String(value).trim().split(/\s+/).slice(0, 2)
     .map((word) => word.charAt(0)).join('').toUpperCase();
@@ -157,7 +159,7 @@ export default function CrudTable({
             dataType={column.numeric ? 'numeric' : 'text'}
             filterType={column.numeric ? 'number' : 'text'}
             filterMenuClassName="crud-filter-menu"
-            filterPlaceholder={`Filtrar por ${column.header.toLowerCase()}`}
+            filterPlaceholder={column.filterPlaceholder ?? `Filtrar por ${column.header.toLowerCase()}`}
             showFilterOperator={false}
             showAddButton={false}
             showFilterMatchModes={false}
@@ -183,10 +185,10 @@ export default function CrudTable({
       <Dialog header="Detalles del registro" visible={Boolean(details)} onHide={() => setDetails(null)}
         className="crud-dialog" draggable={false} resizable={false}>
         <dl className="crud-details">
-          {details && columns.map(({ field, header }) => (
-            <div key={field}>
-              <dt>{header}</dt>
-              <dd>{cellValue(details, field) ?? '—'}</dd>
+          {details && columns.map((column) => (
+            <div key={column.field}>
+              <dt>{column.header}</dt>
+              <dd>{cellValue(details, column)}</dd>
             </div>
           ))}
         </dl>

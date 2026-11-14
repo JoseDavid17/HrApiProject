@@ -5,9 +5,6 @@ namespace HrApiProject.DTOs
     public sealed class EmployeeCreateDto
     {
 
-        [Required(ErrorMessage = "El Id del empleado es obligatorio", ErrorMessageResourceName = "Validación en empleados")]
-        public int EmployeeId { get; set; }
-
         [Required(ErrorMessage = "El nombre del empleado es obligatorio.",ErrorMessageResourceName = "Validación en empleados")]
         public string FirstName { get; set; } = null!;
 

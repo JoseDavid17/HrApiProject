@@ -1,9 +1,18 @@
-import { useEffect, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
+import { Toast } from 'primereact/toast';
 import HrLayout from './layout/HrLayout';
 import LoginPage from './pages/LoginPage';
 import HrModulePage from './pages/HrModulePage';
 import { hrModules } from './pages/hrModules';
 import { getSessionToken, sessionExpiresAt, signOut, subscribeToSession } from './pages/hrApi';
+import './components/HrToast.css';
+
+const toastIcons = {
+  success: 'pi pi-check',
+  error: 'pi pi-times',
+  warn: 'pi pi-exclamation-triangle',
+  info: 'pi pi-info-circle',
+};
 
 function subscribeToLocation(onChange) {
   window.addEventListener('hashchange', onChange);
@@ -20,6 +29,10 @@ function replacePath(path) {
 }
 
 export default function App() {
+  const toast = useRef(null);
+  const notify = useCallback((severity, summary, detail) => {
+    toast.current?.show({ severity, summary, detail, icon: toastIcons[severity], life: severity === 'success' ? 3500 : 6000 });
+  }, []);
   const location = useSyncExternalStore(subscribeToLocation, getCurrentPath);
   const token = useSyncExternalStore(subscribeToSession, getSessionToken);
   const [pathname, query] = location.split('?', 2);
@@ -42,26 +55,29 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [token]);
 
-  if (!token) return <LoginPage />;
-
   return (
-    <HrLayout activePath={path} onSignOut={() => {
-      signOut();
-      replacePath('/login');
-    }}>
-      {module ? (
-        <HrModulePage key={path} module={module} />
-      ) : path === '/' ? (
-        <>
-          <div className="hr-placeholder" aria-hidden="true" />
-          <div className="hr-placeholder" aria-hidden="true" />
-        </>
-      ) : (
-        <section>
-          <h1>Página no encontrada</h1>
-          <a href="#/">Volver a General</a>
-        </section>
-      )}
-    </HrLayout>
+    <>
+      <Toast ref={toast} position="top-right" className="hr-toast" />
+      {token ? (
+        <HrLayout activePath={path} onSignOut={() => {
+          signOut();
+          replacePath('/login');
+        }}>
+          {module ? (
+            <HrModulePage key={path} module={module} notify={notify} />
+          ) : path === '/' ? (
+            <>
+              <div className="hr-placeholder" aria-hidden="true" />
+              <div className="hr-placeholder" aria-hidden="true" />
+            </>
+          ) : (
+            <section>
+              <h1>Página no encontrada</h1>
+              <a href="#/">Volver a General</a>
+            </section>
+          )}
+        </HrLayout>
+      ) : <LoginPage notify={notify} />}
+    </>
   );
 }

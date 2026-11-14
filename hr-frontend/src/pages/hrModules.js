@@ -9,10 +9,30 @@ const commissionFormat = new Intl.NumberFormat('es-HN', {
   maximumFractionDigits: 2,
 });
 
+const employeeContactFields = [
+  field('firstName', 'Nombre', { maxLength: 20 }),
+  field('lastName', 'Apellido', { required: true, maxLength: 25 }),
+  field('email', 'Correo', { required: true, maxLength: 25 }),
+  field('phoneNumber', 'Teléfono', { maxLength: 20 }),
+];
+const employeePayFields = [
+  field('salary', 'Salario', { type: 'number', step: '0.01' }),
+  field('commissionPct', 'Comisión (decimal)', { type: 'number', step: '0.01', max: 1 }),
+];
+
+const departmentLocationField = field('locationId', 'Locación', {
+  catalog: { endpoint: 'Locations', paginated: true, labelField: 'city', valueField: 'locationID' },
+});
+
+const departmentManagerField = field('managerId', 'Responsable', {
+  catalog: { endpoint: 'Employee', paginated: true, labelField: 'fullName', valueField: 'id' },
+});
+
 export const hrModules = {
   '/empleados': {
     title: 'Empleados',
     singular: 'empleado',
+    recordLabel: 'fullName',
     description: 'Consulta los empleados del esquema HR de Oracle.',
     endpoint: 'Employee',
     dataKey: 'id',
@@ -23,7 +43,9 @@ export const hrModules = {
       column('departmentName', 'Departamento'),
       column('email', 'Correo'),
       column('phone', 'Teléfono'),
-      column('hireDate', 'Fecha de contratación', { format: (value) => value.slice(0, 10) }),
+      column('hireDate', 'Fecha de contratación', {
+        format: (value) => value.replace(/^(\d{4})-(\d{2})-(\d{2})(?:T.*)?$/, '$3/$2/$1'),
+      }),
       column('salary', 'Salario', { numeric: true, format: (value) => salaryFormat.format(value) }),
       column('commissionPct', 'Comisión', {
         numeric: true,
@@ -32,13 +54,15 @@ export const hrModules = {
       }),
       column('id', 'ID', { numeric: true }),
     ],
+    canDelete: true,
+    editFields: [
+      ...employeeContactFields,
+      ...employeePayFields.map((payField) => ({ ...payField, step: 'any' })),
+    ],
     createFields: [
-      field('employeeId', 'ID de empleado', { type: 'number', required: true }),
-      field('firstName', 'Nombre', { required: true, maxLength: 20 }),
-      field('lastName', 'Apellido', { required: true, maxLength: 25 }),
-      field('email', 'Correo', { required: true, maxLength: 25 }),
-      field('phoneNumber', 'Teléfono', { maxLength: 20 }),
-      field('hireDate', 'Fecha de contratación', { type: 'date', required: true }),
+      ...employeeContactFields.map((contactField) => contactField.name === 'firstName'
+        ? { ...contactField, required: true }
+        : contactField),
       field('jobId', 'Puesto', {
         required: true,
         catalog: { endpoint: 'Jobs', paginated: true, labelField: 'jobTitle', valueField: 'jobId' },
@@ -46,22 +70,36 @@ export const hrModules = {
       field('departmentId', 'Departamento', {
         catalog: { endpoint: 'Departments', paginated: true, labelField: 'departmentName', valueField: 'departmentId' },
       }),
-      field('salary', 'Salario', { type: 'number', step: '0.01' }),
-      field('commissionPct', 'Comisión (decimal)', { type: 'number', step: '0.01', max: 1 }),
+      ...employeePayFields,
     ],
   },
   '/departamentos': {
     title: 'Departamentos',
+    singular: 'departamento',
+    recordLabel: 'departmentName',
+    updateMethod: 'PUT',
+    changeManagerFields: [{ ...departmentManagerField, label: 'Nuevo responsable', required: true }],
     description: 'Consulta los departamentos y los códigos de sus responsables y locaciones.',
     endpoint: 'Departments',
     dataKey: 'departmentId',
     paginated: true,
     columns: [
       column('departmentName', 'Departamento'),
-      column('managerId', 'ID de responsable', { numeric: true }),
-      column('locationId', 'ID de locación', { numeric: true }),
-      column('departmentId', 'ID', { numeric: true }),
+      column('fullName', 'Nombre del encargado'),
+      column('city', 'Ciudad'),
+      column('managerId', 'Código del manager', { numeric: true }),
     ],
+    canDelete: true,
+    createFields: [
+      field('departmentName', 'Nombre del departamento', { required: true, maxLength: 30 }),
+      departmentManagerField,
+      departmentLocationField,
+    ],
+    editFields: [
+      field('departamentName', 'Nombre del departamento', { required: true, maxLength: 30 }),
+      { ...departmentLocationField, allowClear: false },
+    ],
+    editValues: ({ departmentName, locationId }) => ({ departamentName: departmentName, locationId }),
   },
   '/regiones': {
     title: 'Regiones',
@@ -71,7 +109,6 @@ export const hrModules = {
     dataKey: 'id',
     columns: [column('name', 'Región'), column('id', 'ID', { numeric: true })],
     createFields: [
-      field('regionId', 'ID de región', { type: 'number', required: true }),
       field('regionName', 'Región', { required: true, maxLength: 25 }),
     ],
   },

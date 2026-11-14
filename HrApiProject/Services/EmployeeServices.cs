@@ -65,7 +65,6 @@ namespace HrApiProject.Services
         {
             var newEmployee = new Employees
             {
-                EmployeeId = employeeCreateDto.EmployeeId,
                 FirstName = employeeCreateDto.FirstName,
                 LastName = employeeCreateDto.LastName,
                 Email = employeeCreateDto.Email,
@@ -77,13 +76,7 @@ namespace HrApiProject.Services
                 JobId = employeeCreateDto.JobId
             };
 
-            var yaexisteempleado = await _context.Employees.CountAsync(e => e.EmployeeId == employeeCreateDto.EmployeeId);
-
-            if (yaexisteempleado > 0)
-            {
-                throw new BusinessRuleException($"El empleado ' {employeeCreateDto.EmployeeId} ya está registrado.");
-            }
-
+         
             var yaexisteCorreo = await _context.Employees.CountAsync(e=> e.Email == employeeCreateDto.Email);
 
             if( yaexisteCorreo > 0)

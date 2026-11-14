@@ -3,7 +3,6 @@ using HrApiProject.Domain;
 using HrApiProject.DTOs;
 using HrApiProject.Exceptions;
 using Microsoft.EntityFrameworkCore;
-using System.Xml.Linq;
 
 namespace HrApiProject.Services
 {
@@ -28,8 +27,9 @@ namespace HrApiProject.Services
 
               DepartmentId = d.DepartmentId,
               DepartmentName=d.DepartmentName,
+              FullName =d.Employees.FirstName + ' ' +d.Employees.LastName,
+              City = d.Location!.City ,
               ManagerId = d.ManagerId,
-              LocationId=d.LocationId
             } ).ToListAsync();
         }
 
@@ -83,7 +83,6 @@ namespace HrApiProject.Services
         {
             var departmentEntity = new Departments
             {
-                DepartmentId = departmentDto.DepartmentId,
                 DepartmentName = departmentDto.DepartmentName,
                 LocationId = departmentDto.LocationId,
                 ManagerId = departmentDto.ManagerId
@@ -93,7 +92,7 @@ namespace HrApiProject.Services
 
             if(existDep > 0)
             {
-                throw new BusinessRuleException($"Ya existe un departamento con el nombre {existDep}");
+                throw new BusinessRuleException($"Ya existe un departamento con el nombre {departmentDto.DepartmentName}");
             }
 
             _context.Departments.Add(departmentEntity);
@@ -134,15 +133,69 @@ namespace HrApiProject.Services
                 return false;
             }
 
-            var existDep = await _context.Departments.CountAsync(d => d.DepartmentName == updateDepartmentDto.DepartamentName);
+            
+            var nombre = updateDepartmentDto.DepartamentName;
 
-            if (existDep > 0)
+            var existeOtroDepartamento = await _context.Departments.CountAsync(
+                d => d.DepartmentId != id && d.DepartmentName == nombre);
+
+            if (existeOtroDepartamento > 0)
             {
-                throw new BusinessRuleException($"Ya existe un departamento con el nombre {updateDepartmentDto.DepartamentName}");
+                throw new BusinessRuleException(
+                    $"Ya existe un departamento con el nombre {nombre}.");
             }
 
             deptoEntity.DepartmentName = updateDepartmentDto.DepartamentName;
             deptoEntity.LocationId = updateDepartmentDto.LocationId ?? deptoEntity.LocationId;
+
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
+        public async Task<DepartmentDto?> GetDepartmentByIdAsync(int id)
+        {
+
+            return await _context.Departments
+            .Where(e => e.DepartmentId == id)
+            .Select(e => new DepartmentDto
+            {
+                DepartmentId = e.DepartmentId,
+                DepartmentName = e.DepartmentName
+            }).FirstOrDefaultAsync();
+
+        }
+
+        public async Task<bool> ChangeManager(int id, int manager_id)
+        {
+          var department =  await _context.Departments.FirstOrDefaultAsync(d => d.DepartmentId == id);
+
+            if (department == null)
+            {
+                return false;
+            }
+
+            var empleadoPerteneceAlDepartamento = await _context.Employees.CountAsync(e =>
+             e.EmployeeId == manager_id && e.DepartmentId == id);
+
+            if (empleadoPerteneceAlDepartamento == 0)
+            {
+                throw new BusinessRuleException(
+                    $"El empleado {manager_id} no pertenece al departamento {id}.");
+            }
+
+            if (empleadoPerteneceAlDepartamento == 0)
+            {
+                return false;
+            }
+
+            if (department.ManagerId == manager_id)
+            {
+                return true;
+            }
+
+
+            department.ManagerId = manager_id;
 
             await _context.SaveChangesAsync();
 

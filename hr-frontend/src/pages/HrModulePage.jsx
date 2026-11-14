@@ -1,12 +1,25 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
 import { InputText } from 'primereact/inputtext';
 import CrudTable from '../components/CrudTable';
-import { apiErrorMessage, createRecord, listRecords } from './hrApi';
+import { apiErrorMessage, changeDepartmentManager, createRecord, deleteRecord, listRecords, updateRecord } from './hrApi';
 
-function CatalogField({ field, value, onChange, disabled }) {
+function employeeEditValues(employee) {
+  const fullName = employee.fullName ?? '';
+  const separator = fullName.indexOf(' ');
+  return {
+    firstName: employee.firstName ?? (separator > 0 ? fullName.slice(0, separator) : ''),
+    lastName: employee.lastName ?? (separator >= 0 ? fullName.slice(separator + 1).trim() : fullName),
+    email: employee.email,
+    phoneNumber: employee.phone,
+    salary: employee.salary,
+    commissionPct: employee.commissionPct,
+  };
+}
+
+function CatalogField({ field, value, onChange, disabled, notify, departmentName }) {
   const { label, required, catalog } = field;
   const inputId = useId();
   const [result, setResult] = useState(null);
@@ -20,16 +33,22 @@ function CatalogField({ field, value, onChange, disabled }) {
       })
       .catch((error) => {
         if (!controller.signal.aborted) {
-          setResult({ error: apiErrorMessage(error, 'No se pudo cargar la lista.') });
+          setResult({ failed: true });
+          notify('error', `No se pudo cargar el catálogo: ${label}`,
+            apiErrorMessage(error, 'Selecciona Reintentar para volver a cargarlo.'));
         }
       });
     return () => controller.abort();
-  }, [catalog, attempt]);
+  }, [catalog, attempt, label, notify]);
 
-  const options = result?.options ?? [];
+  const records = result?.options ?? [];
+  const options = departmentName === undefined ? records
+    : records.filter((employee) => employee.departmentName === departmentName);
+  const emptyMessage = departmentName === undefined
+    ? 'Sin opciones registradas' : 'Sin empleados en este departamento';
   const placeholder = !result ? 'Cargando opciones…'
-    : result.error ? 'Opciones no disponibles'
-      : options.length ? 'Seleccionar' : 'Sin opciones registradas';
+    : result.failed ? 'Opciones no disponibles'
+      : options.length ? 'Seleccionar' : emptyMessage;
 
   return (
     <div className="crud-form__field crud-form__catalog">
@@ -49,30 +68,33 @@ function CatalogField({ field, value, onChange, disabled }) {
         emptyFilterMessage="No se encontraron coincidencias."
         placeholder={placeholder}
         panelClassName="crud-catalog-panel"
-        showClear={!required}
+        showClear={field.allowClear ?? !required}
         disabled={disabled || !options.length}
       />
-      {result?.error && (
-        <div className="crud-form__catalog-error">
-          <span role="alert">{result.error}</span>
-          <button type="button" disabled={disabled} onClick={() => {
-            setResult(null);
-            setAttempt((current) => current + 1);
-          }}>Reintentar</button>
-        </div>
+      {result?.failed && (
+        <button className="crud-form__catalog-retry" type="button" disabled={disabled} onClick={() => {
+          setResult(null);
+          setAttempt((current) => current + 1);
+        }}>Reintentar</button>
       )}
     </div>
   );
 }
 
-function RecordForm({ title, fields, submitLabel, submit, onClose }) {
+function RecordForm({ title, fields, submitLabel, submit, onClose, notify, initialValues, nameToReview, departmentName }) {
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [selections, setSelections] = useState({});
+  const submitInProgress = useRef(false);
+  const [selections, setSelections] = useState(() => initialValues ?? {});
 
   async function handleSubmit(event) {
     event.preventDefault();
-    if (busy) return;
+    if (submitInProgress.current) return;
+    const invalidInput = event.currentTarget.querySelector('input:invalid');
+    if (invalidInput) {
+      invalidInput.focus();
+      notify('warn', 'Revisa el formulario', invalidInput.validationMessage);
+      return;
+    }
     const formData = new FormData(event.currentTarget);
     const values = Object.fromEntries(fields.map(({ name, type, catalog }) => {
       if (catalog) return [name, selections[name] ?? null];
@@ -81,18 +103,19 @@ function RecordForm({ title, fields, submitLabel, submit, onClose }) {
     }));
 
     if (fields.some(({ name, required }) => required && values[name] == null)) {
-      setError('Completa los campos obligatorios.');
+      notify('warn', 'Campos obligatorios', 'Completa los campos marcados con un asterisco.');
       return;
     }
 
+    submitInProgress.current = true;
     setBusy(true);
-    setError('');
     try {
       await submit(values);
       onClose();
     } catch (requestError) {
-      setError(apiErrorMessage(requestError, 'No se pudo completar la operación.'));
+      notify('error', 'No se pudo guardar', apiErrorMessage(requestError, 'Inténtalo de nuevo.'));
     } finally {
+      submitInProgress.current = false;
       setBusy(false);
     }
   }
@@ -100,24 +123,29 @@ function RecordForm({ title, fields, submitLabel, submit, onClose }) {
   return (
     <Dialog header={title} visible onHide={onClose} className="crud-dialog"
       closable={!busy} closeOnEscape={!busy} draggable={false} resizable={false}>
-      <form className="crud-form" onSubmit={handleSubmit}>
+      <form className="crud-form" noValidate onSubmit={handleSubmit}>
+        {nameToReview && (
+          <label className="crud-form__hint">
+            <input type="checkbox" required />
+            <span>Confirmo que el nombre y apellido de <strong>{nameToReview}</strong> están correctos.</span>
+          </label>
+        )}
         {fields.map((field) => {
           const { name, label, catalog, type = 'text', ...attributes } = field;
           if (catalog) {
             return <CatalogField key={name} field={field} value={selections[name] ?? null}
               onChange={(value) => setSelections((current) => ({ ...current, [name]: value }))}
-              disabled={busy} />;
+              disabled={busy} notify={notify} departmentName={departmentName} />;
           }
 
           return (
             <label className="crud-form__field" key={name}>
               <span>{label}{attributes.required && ' *'}</span>
-              <InputText name={name} type={type} {...attributes}
+              <InputText name={name} type={type} defaultValue={initialValues?.[name] ?? ''} {...attributes}
                 min={type === 'number' ? 0 : undefined} disabled={busy} />
             </label>
           );
         })}
-        {error && <p className="crud-form__error" role="alert">{error}</p>}
         <div className="crud-form__actions">
           <Button type="button" label="Cancelar" outlined disabled={busy} onClick={onClose} />
           <Button type="submit" label={submitLabel} loading={busy} />
@@ -127,13 +155,16 @@ function RecordForm({ title, fields, submitLabel, submit, onClose }) {
   );
 }
 
-export default function HrModulePage({ module }) {
+export default function HrModulePage({ module, notify }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [request, setRequest] = useState(0);
   const [dialog, setDialog] = useState(null);
-  const [notice, setNotice] = useState('');
+  const [recordToEdit, setRecordToEdit] = useState(null);
+  const [recordToDelete, setRecordToDelete] = useState(null);
+  const [departmentToManage, setDepartmentToManage] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const deleteInProgress = useRef(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -144,36 +175,69 @@ export default function HrModulePage({ module }) {
       .catch((requestError) => {
         if (controller.signal.aborted) return;
         if ([401, 403].includes(requestError.response?.status)) setRows([]);
-        setError(requestError);
+        if (requestError.response?.status !== 401) {
+          notify('error', 'No se pudo cargar el listado',
+            apiErrorMessage(requestError, 'Verifica que la API esté disponible y vuelve a actualizar.'));
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [module, request]);
+  }, [module, notify, request]);
 
   function refresh() {
-    setError(null);
     setLoading(true);
     setRequest((value) => value + 1);
   }
 
   async function addRecord(values) {
     await createRecord(module.endpoint, values);
-    setNotice('Registro agregado.');
+    notify('success', 'Registro agregado', 'Los datos se guardaron correctamente.');
     refresh();
+  }
+
+  async function saveRecord(values) {
+    await updateRecord(module.endpoint, recordToEdit[module.dataKey], values, module.updateMethod);
+    notify('success', 'Registro actualizado', 'Los cambios se guardaron correctamente.');
+    refresh();
+  }
+
+  async function saveManager({ managerId }) {
+    await changeDepartmentManager(departmentToManage.departmentId, managerId);
+    notify('success', 'Responsable actualizado', 'El cambio de responsable se guardó correctamente.');
+    refresh();
+  }
+
+  async function confirmDelete() {
+    if (!recordToDelete || deleteInProgress.current) return;
+    deleteInProgress.current = true;
+    setDeleting(true);
+    try {
+      const id = recordToDelete[module.dataKey];
+      await deleteRecord(module.endpoint, id);
+      setRows((current) => current.filter((record) => record[module.dataKey] !== id));
+      setRecordToDelete(null);
+      notify('success', 'Registro eliminado', 'Se quitó el registro del listado.');
+      refresh();
+    } catch (error) {
+      if (error.response?.status === 404) {
+        setRecordToDelete(null);
+        notify('warn', 'Registro no encontrado', 'Se actualizará el listado.');
+        refresh();
+      } else {
+        notify('error', 'No se pudo eliminar el registro', apiErrorMessage(error, 'Inténtalo de nuevo.'));
+      }
+    } finally {
+      deleteInProgress.current = false;
+      setDeleting(false);
+    }
   }
 
   return (
     <section className="crud-page" aria-labelledby="crud-page-title">
       <h1 id="crud-page-title">{module.title}</h1>
       <p className="crud-page__description">{module.description}</p>
-      {error && (
-        <div className="crud-notice">
-          <span role="alert">{apiErrorMessage(error, 'No se pudieron cargar los registros. Verifica que la API esté disponible.')}</span>
-        </div>
-      )}
-      {notice && <p className="crud-notice" role="status">{notice}</p>}
       <CrudTable
         rows={rows}
         columns={module.columns}
@@ -181,12 +245,47 @@ export default function HrModulePage({ module }) {
         loading={loading}
         onRefresh={refresh}
         onAdd={module.createFields ? () => setDialog('add') : undefined}
+        onEdit={module.editFields ? setRecordToEdit : undefined}
+        additionalActions={[
+          ...(module.changeManagerFields ? [{
+            key: 'change-manager', label: 'Cambiar responsable', icon: 'pi pi-user-edit', onClick: setDepartmentToManage,
+          }] : []),
+          ...(module.canDelete ? [{
+            key: 'delete', label: 'Eliminar', icon: 'pi pi-trash', onClick: setRecordToDelete,
+          }] : []),
+        ]}
         addUnavailableReason={!module.createFields ? 'Este módulo todavía no admite altas en la API.' : undefined}
       />
       {dialog === 'add' && (
         <RecordForm title={`Agregar ${module.singular}`} fields={module.createFields}
-          submitLabel="Guardar" submit={addRecord} onClose={() => setDialog(null)} />
+          submitLabel="Guardar" submit={addRecord} onClose={() => setDialog(null)} notify={notify} />
       )}
+      {recordToEdit && (
+        <RecordForm key={recordToEdit[module.dataKey]} title={`Editar ${module.singular}`} fields={module.editFields}
+          initialValues={(module.editValues ?? employeeEditValues)(recordToEdit)}
+          nameToReview={!module.editValues && recordToEdit.firstName == null && recordToEdit.lastName == null &&
+            recordToEdit.fullName?.trim().split(/\s+/).length > 2 ? recordToEdit.fullName : undefined}
+          submitLabel="Guardar cambios" submit={saveRecord} onClose={() => setRecordToEdit(null)}
+          notify={notify} />
+      )}
+      {departmentToManage && (
+        <RecordForm title={`Cambiar responsable de ${departmentToManage.departmentName}`}
+          fields={module.changeManagerFields} departmentName={departmentToManage.departmentName}
+          submitLabel="Guardar cambios" submit={saveManager} onClose={() => setDepartmentToManage(null)}
+          notify={notify} />
+      )}
+      <Dialog header={`Eliminar ${module.singular}`} className="crud-dialog"
+        visible={Boolean(recordToDelete)} onHide={() => setRecordToDelete(null)}
+        closable={!deleting} closeOnEscape={!deleting} draggable={false} resizable={false}
+        footer={(
+          <>
+            <Button type="button" label="Cancelar" outlined autoFocus disabled={deleting}
+              onClick={() => setRecordToDelete(null)} />
+            <Button type="button" label="Eliminar" icon="pi pi-trash" loading={deleting} onClick={confirmDelete} />
+          </>
+        )}>
+        <p>¿Quieres eliminar este {module.singular}? <strong>{recordToDelete?.[module.recordLabel] ?? recordToDelete?.[module.dataKey]}</strong></p>
+      </Dialog>
     </section>
   );
 }

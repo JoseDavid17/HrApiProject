@@ -52,7 +52,6 @@ api.interceptors.request.use((request) => {
 
 api.interceptors.response.use(undefined, (error) => {
   const currentToken = sessionStorage.getItem(sessionKey);
-  // An older request must not invalidate a newer session.
   if (error.response?.status === 401 && currentToken &&
       error.config?.headers?.get('Authorization') === `Bearer ${currentToken}`) {
     signOut();
@@ -65,8 +64,6 @@ export async function listRecords({ endpoint, paginated }, signal) {
   let pageNumber = 1;
   let page;
 
-  // The API returns arrays without totals. Collect all pages so the table
-  // can search, filter and sort across the complete catalog.
   do {
     const { data } = await api.get(`/${endpoint}`, {
       signal,
@@ -85,10 +82,28 @@ export async function createRecord(endpoint, values) {
   await api.post(`/${endpoint}`, values);
 }
 
+export async function updateRecord(endpoint, id, values, method = 'PATCH') {
+  await api.request({ method, url: `/${endpoint}/${encodeURIComponent(id)}`, data: values });
+}
+
+export async function deleteRecord(endpoint, id) {
+  await api.delete(`/${endpoint}/${encodeURIComponent(id)}`);
+}
+
+export async function changeDepartmentManager(departmentId, managerId) {
+  await api.patch(`/Departments/ChangeManager/${encodeURIComponent(departmentId)}`, managerId, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
 export function apiErrorMessage(error, fallback) {
   const status = error.response?.status;
   if (status === 403) return 'Tu cuenta no tiene permisos para realizar esta operación.';
   const data = error.response?.data;
-  const validation = Object.values(data?.errors ?? {}).flat().find((message) => typeof message === 'string');
-  return validation ?? (typeof data?.message === 'string' ? data.message : fallback);
+  const messages = Object.values(data?.errors ?? {}).flat()
+    .filter((message) => typeof message === 'string' && message.trim());
+  if (messages.length) return [...new Set(messages)].join('\n');
+
+  return [data?.detail, data?.message, data?.title]
+    .find((message) => typeof message === 'string' && message.trim()) ?? fallback;
 }

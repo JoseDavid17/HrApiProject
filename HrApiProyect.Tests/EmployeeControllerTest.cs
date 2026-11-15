@@ -120,7 +120,6 @@ namespace HrApiProyect.Tests
             // Arrange
             var empleadoParaCrear = new EmployeeCreateDto
             {
-                EmployeeId = 10,
                 FirstName = "Carlos",
                 LastName = "García",
                 Email = "carlos.garcia@empresa.com",

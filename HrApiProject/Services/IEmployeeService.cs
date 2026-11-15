@@ -10,5 +10,6 @@ namespace HrApiProject.Services
         Task<EmployeeDetailsDto> CreateEmployeesAsync(EmployeeCreateDto employeeCreateDto);
         Task<bool> UpdateDatosEmployee(int id, UpdateDataEmpDTO updatedatosEmpleado);
         Task<bool> DeleteEmpleado(int id);
+        Task<IEnumerable<EmployeeSupervisorsDto>> Supervisores(int pagenumber, int pagesize);
     }
 }

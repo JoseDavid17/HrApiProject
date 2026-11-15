@@ -242,6 +242,7 @@ export default function HrModulePage({ module, notify }) {
         rows={rows}
         columns={module.columns}
         dataKey={module.dataKey}
+        readOnly={module.readOnly}
         loading={loading}
         onRefresh={refresh}
         onAdd={module.createFields ? () => setDialog('add') : undefined}

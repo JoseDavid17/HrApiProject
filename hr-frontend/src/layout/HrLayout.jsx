@@ -23,7 +23,10 @@ const groups = [
     action: true,
     items: [
       { label: 'Indicadores', icon: 'chart-bar', children: ['Resumen', 'Reportes', 'Actividad reciente'] },
-      { label: 'Empleados', icon: 'id-card', children: [{ label: 'Lista de empleados', path: '/empleados' }] },
+      { label: 'Empleados', icon: 'id-card', children: [
+        { label: 'Lista de empleados', path: '/empleados' },
+        { label: 'Supervisores', icon: 'sitemap', path: '/empleados/supervisores' },
+      ] },
       { label: 'Departamentos', icon: 'building', children: [{ label: 'Lista de departamentos', path: '/departamentos' }] },
       { label: 'Regiones', icon: 'globe', children: [{ label: 'Lista de regiones', path: '/regiones' }] },
       { label: 'Países', icon: 'flag', children: [{ label: 'Lista de países', path: '/paises' }] },
@@ -96,6 +99,7 @@ function HrSidebarMenu({ collapsed, activeItems, activePath, openGroups, onSelec
                             <a className="hr-subrow" href={`#${child.path}`}
                               aria-current={child.path === activePath ? 'page' : undefined}
                               onClick={onNavigate}>
+                              {child.icon && <Icon name={child.icon} />}
                               {child.label}
                             </a>
                           </li>

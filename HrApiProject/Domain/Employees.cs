@@ -45,7 +45,9 @@ namespace HrApiProject.Domain
         public Departments? Department { get; set; }
 
         [ForeignKey("JobId")]
-        public Jobs? Jobs { get; set; } 
+        public Jobs? Jobs { get; set; }
 
+        [ForeignKey("ManagerId")]
+        public Employees? Manager { get; set; }
     }
 }

@@ -90,5 +90,23 @@ namespace HrApiProject.Controllers
 
         }
 
+        [HttpGet("Supervisores")]
+        public async Task<ActionResult> ObtenerSupervisores([FromQuery] int pagenumber = 1, [FromQuery] int pagesize = 50)
+        {
+            if (pagenumber < 0)
+            {
+                pagenumber = 1;
+            }
+
+            if(pagesize > 50)
+            {
+                pagesize = 50;
+            }
+
+            var supervisores = await _employeeService.Supervisores(pagenumber,pagesize);
+
+            return Ok(supervisores);
+        }
+
     }
 }

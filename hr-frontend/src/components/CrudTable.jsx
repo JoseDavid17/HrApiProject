@@ -65,7 +65,7 @@ function TableCell({ record, column }) {
 
 export default function CrudTable({
   rows, columns, dataKey, loading, onRefresh, onAdd, addUnavailableReason,
-  onEdit, additionalActions = [],
+  onEdit, additionalActions = [], readOnly = false,
 }) {
   const [filters, setFilters] = useState(() => initialFilters(columns));
   const [showFilters, setShowFilters] = useState(false);
@@ -134,7 +134,7 @@ export default function CrudTable({
         paginator
         paginatorPosition="both"
         paginatorLeft={({ className }) => className === 'p-paginator-top' ? toolbarStart : null}
-        paginatorRight={({ className }) => className === 'p-paginator-top' && (
+        paginatorRight={({ className }) => !readOnly && className === 'p-paginator-top' && (
           <span className="crud-table__add" title={addUnavailableReason ?? 'Agregar registro'}>
             <Button type="button" icon="pi pi-plus" outlined aria-label="Agregar registro"
               disabled={!onAdd} onClick={onAdd} />
@@ -165,7 +165,7 @@ export default function CrudTable({
             showFilterMatchModes={false}
           />
         ))}
-        <Column header="Acciones" className="crud-table__actions" body={(record) => (
+        {!readOnly && <Column header="Acciones" className="crud-table__actions" body={(record) => (
           <div className="crud-table__action-group">
             {rowActions.map(({ key, label, icon, onClick }) => (
               <span key={key} title={onClick ? label : `${label} no disponible`}>
@@ -180,7 +180,7 @@ export default function CrudTable({
               </span>
             ))}
           </div>
-        )} />
+        )} />}
       </DataTable>
       <Dialog header="Detalles del registro" visible={Boolean(details)} onHide={() => setDetails(null)}
         className="crud-dialog" draggable={false} resizable={false}>

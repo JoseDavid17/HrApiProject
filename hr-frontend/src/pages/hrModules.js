@@ -73,6 +73,18 @@ export const hrModules = {
       ...employeePayFields,
     ],
   },
+  '/empleados/supervisores': {
+    title: 'Supervisores',
+    description: 'Consulta el supervisor directo de cada empleado.',
+    endpoint: 'Employee/Supervisores',
+    paginated: true,
+    readOnly: true,
+    columns: [
+      column('fullEmployeeName', 'Empleado', { avatar: true }),
+      column('fullSupervisorName', 'Supervisor'),
+      column('departmentName', "Departamento")
+    ],
+  },
   '/departamentos': {
     title: 'Departamentos',
     singular: 'departamento',

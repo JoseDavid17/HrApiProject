@@ -125,5 +125,25 @@ namespace HrApiProject.Services
 
             return true;
         }
+
+        public async Task<IEnumerable<EmployeeSupervisorsDto>> Supervisores(int pagenumber, int pagesize)
+        {
+            int registroASaltar = (pagenumber - 1) * pagesize;
+
+            return await _context.Employees
+            .AsNoTracking()
+            .Where(e => e.ManagerId != null)
+            .OrderBy(e => e.EmployeeId)
+            .Skip(registroASaltar)
+            .Take(pagesize)
+            .Select(e => new EmployeeSupervisorsDto
+            {
+                FullEmployeeName = e.FirstName + " " + e.LastName,
+                FullSupervisorName = e.Manager!.FirstName + " " + e.Manager.LastName,
+                DepartmentName = e.Department!.DepartmentName
+            }).ToListAsync();
+            
+          
+        }
     }
 }

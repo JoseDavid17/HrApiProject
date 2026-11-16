@@ -1,3 +1,5 @@
+import { createElement } from 'react';
+
 const column = (field, header, options = {}) => ({ field, header, ...options });
 const field = (name, label, options = {}) => ({ name, label, ...options });
 const salaryFormat = new Intl.NumberFormat('es-HN', {
@@ -27,6 +29,57 @@ const departmentLocationField = field('locationId', 'Locación', {
 const departmentManagerField = field('managerId', 'Responsable', {
   catalog: { endpoint: 'Employee', paginated: true, labelField: 'fullName', valueField: 'id' },
 });
+
+function supervisorForm(employee, rows) {
+  const supervisors = new Map();
+
+  for (const { supervisorId, fullSupervisorName, supervisorDepartmentId, supervisorDepartmentName } of rows) {
+    if (!Number.isInteger(supervisorId) || !Number.isInteger(supervisorDepartmentId) ||
+        supervisorId === employee.employeeId || supervisorId === employee.supervisorId) continue;
+
+    const departmentName = supervisorDepartmentName || `Departamento ${supervisorDepartmentId}`;
+    supervisors.set(supervisorId, {
+      id: supervisorId,
+      name: fullSupervisorName,
+      departmentId: supervisorDepartmentId,
+      departmentName,
+      label: `${fullSupervisorName} · ${departmentName} · #${supervisorId}`,
+    });
+  }
+
+  return {
+    title: `Cambiar supervisor de ${employee.fullEmployeeName}`,
+    submitLabel: 'Confirmar cambio',
+    fields: [field('supervisorId', 'Nuevo supervisor', {
+      required: true,
+      catalog: {
+        options: [...supervisors.values()].sort((first, second) => first.label.localeCompare(second.label, 'es-HN')),
+        labelField: 'label',
+        valueField: 'id',
+        emptyMessage: 'Sin supervisores disponibles',
+      },
+    })],
+    confirmation: ({ supervisorId }) => {
+      const supervisor = supervisors.get(supervisorId);
+      if (!supervisor) return null;
+
+      const departmentMessage = employee.departmentId === supervisor.departmentId
+        ? 'El empleado permanecerá en '
+        : 'El empleado se moverá a ';
+      const supervisorName = createElement('strong', null, supervisor.name);
+      const departmentName = createElement('strong', null, supervisor.departmentName);
+
+      return createElement('div', null,
+        createElement('div', null, '¿Confirmas asignar a ', supervisorName, ' como supervisor?'),
+        createElement('div', null, departmentMessage, departmentName, '.'),
+      );
+    },
+    prepareRequest: ({ supervisorId }) => ({
+      body: supervisorId,
+      params: { departmentId: supervisors.get(supervisorId).departmentId },
+    }),
+  };
+}
 
 export const hrModules = {
   '/empleados': {
@@ -77,8 +130,20 @@ export const hrModules = {
     title: 'Supervisores',
     description: 'Consulta el supervisor directo de cada empleado.',
     endpoint: 'Employee/Supervisores',
+    dataKey: 'employeeId',
     paginated: true,
     readOnly: true,
+    rowActions: [{
+      key: 'change-supervisor',
+      label: 'Cambiar supervisor',
+      icon: 'pi pi-user-edit',
+      endpoint: 'Employee/ChangeSupervisor',
+      disabled: ({ employeeId }) => !Number.isInteger(employeeId),
+      disabledMessage: 'El cambio de supervisor requiere que la API devuelva los identificadores del listado.',
+      successSummary: 'Supervisor actualizado',
+      successDetail: 'El cambio se guardó correctamente.',
+      form: supervisorForm,
+    }],
     columns: [
       column('fullEmployeeName', 'Empleado', { avatar: true }),
       column('fullSupervisorName', 'Supervisor'),
@@ -90,7 +155,28 @@ export const hrModules = {
     singular: 'departamento',
     recordLabel: 'departmentName',
     updateMethod: 'PUT',
-    changeManagerFields: [{ ...departmentManagerField, label: 'Nuevo responsable', required: true }],
+    rowActions: [{
+      key: 'change-manager',
+      label: 'Cambiar responsable',
+      icon: 'pi pi-user-edit',
+      endpoint: 'Departments/ChangeManager',
+      successSummary: 'Responsable actualizado',
+      successDetail: 'El cambio de responsable se guardó correctamente.',
+      form: ({ departmentName }) => ({
+        title: `Cambiar responsable de ${departmentName}`,
+        fields: [{
+          ...departmentManagerField,
+          label: 'Nuevo responsable',
+          required: true,
+          catalog: {
+            ...departmentManagerField.catalog,
+            filterOptions: (employees) => employees.filter((employee) => employee.departmentName === departmentName),
+            emptyMessage: 'Sin empleados en este departamento',
+          },
+        }],
+        prepareRequest: ({ managerId }) => ({ body: managerId }),
+      }),
+    }],
     description: 'Consulta los departamentos y los códigos de sus responsables y locaciones.',
     endpoint: 'Departments',
     dataKey: 'departmentId',

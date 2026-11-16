@@ -138,12 +138,59 @@ namespace HrApiProject.Services
             .Take(pagesize)
             .Select(e => new EmployeeSupervisorsDto
             {
+                EmployeeId = e.EmployeeId,
+                DepartmentId = e.DepartmentId,
                 FullEmployeeName = e.FirstName + " " + e.LastName,
+                DepartmentName = e.Department!.DepartmentName,
+
+                SupervisorId = e.ManagerId,
+
                 FullSupervisorName = e.Manager!.FirstName + " " + e.Manager.LastName,
-                DepartmentName = e.Department!.DepartmentName
+                SupervisorDepartmentId = e.Manager!.DepartmentId,
+                SupervisorDepartmentName = e.Manager!.Department!.DepartmentName
+
+
             }).ToListAsync();
-            
-          
         }
+
+        public async Task<bool> ChangeSupervisor(int employeeid, int supervisor, int departmentid)
+        {
+            var employee = await _context.Employees.FindAsync(employeeid);
+            if (employee is null)
+            {
+                return false;
+            }
+
+            if (employeeid == supervisor)
+            {
+                throw new BusinessRuleException(
+                    "Un empleado no puede ser su propio supervisor.");
+            }
+
+            var newSupervisor = await _context.Employees.FindAsync(supervisor);
+            if (newSupervisor is null)
+            {
+                return false;
+            }
+
+            if (newSupervisor.DepartmentId is not int supervisorDepartmentId)
+            {
+                throw new BusinessRuleException(
+                    $"El supervisor {supervisor} no tiene un departamento asignado.");
+            }
+
+            if (supervisorDepartmentId != departmentid)
+            {
+                throw new BusinessRuleException(
+                    $"El supervisor {supervisor} pertenece al departamento {supervisorDepartmentId}.");
+            }
+
+            employee.ManagerId = newSupervisor.EmployeeId;
+            employee.DepartmentId = supervisorDepartmentId;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
     }
 }

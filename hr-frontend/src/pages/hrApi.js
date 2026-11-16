@@ -82,18 +82,18 @@ export async function createRecord(endpoint, values) {
   await api.post(`/${endpoint}`, values);
 }
 
-export async function updateRecord(endpoint, id, values, method = 'PATCH') {
-  await api.request({ method, url: `/${endpoint}/${encodeURIComponent(id)}`, data: values });
+export async function updateRecord(endpoint, id, values, method = 'PATCH', params) {
+  await api.request({
+    method,
+    url: `/${endpoint}/${encodeURIComponent(id)}`,
+    data: values,
+    params,
+    headers: typeof values === 'number' ? { 'Content-Type': 'application/json' } : undefined,
+  });
 }
 
 export async function deleteRecord(endpoint, id) {
   await api.delete(`/${endpoint}/${encodeURIComponent(id)}`);
-}
-
-export async function changeDepartmentManager(departmentId, managerId) {
-  await api.patch(`/Departments/ChangeManager/${encodeURIComponent(departmentId)}`, managerId, {
-    headers: { 'Content-Type': 'application/json' },
-  });
 }
 
 export function apiErrorMessage(error, fallback) {

@@ -11,5 +11,7 @@ namespace HrApiProject.Services
         Task<bool> UpdateDatosEmployee(int id, UpdateDataEmpDTO updatedatosEmpleado);
         Task<bool> DeleteEmpleado(int id);
         Task<IEnumerable<EmployeeSupervisorsDto>> Supervisores(int pagenumber, int pagesize);
+
+        Task<bool> ChangeSupervisor(int employeeid, int supervisor, int departmentid);
     }
 }

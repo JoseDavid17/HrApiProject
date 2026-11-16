@@ -108,5 +108,23 @@ namespace HrApiProject.Controllers
             return Ok(supervisores);
         }
 
+        [HttpPatch("ChangeSupervisor/{id}")]
+        public async Task<ActionResult> CambiarSupervisor([FromRoute(Name = "id")] int employee, [FromBody] int SupervisorId, [FromQuery] int DepartmentId)
+        {
+            var updated = await _employeeService.ChangeSupervisor(
+                employee, SupervisorId, DepartmentId);
+
+            if (!updated)
+            {
+                return NotFound(new
+                {
+                    message = $"No se encontró el empleado {employee} o el supervisor {SupervisorId}."
+                });
+            }
+
+            return NoContent();
+        }
+
+
     }
 }

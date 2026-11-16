@@ -6,9 +6,11 @@ import { Column } from 'primereact/column';
 import { DataTable } from 'primereact/datatable';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
+import { Skeleton } from 'primereact/skeleton';
 import './CrudTable.css';
 
 const pageSize = 10;
+const skeletonRows = Array.from({ length: pageSize }, (_, id) => ({ id }));
 
 const paginatorTemplate = {
   layout: 'FirstPageLink PrevPageLink CurrentPageReport PageLinks NextPageLink LastPageLink',
@@ -27,6 +29,11 @@ const paginatorTemplate = {
       {page === view.endPage && page < totalPages - 1 && <span aria-hidden="true">…</span>}
     </Fragment>
   ),
+};
+
+const loadingPaginatorTemplate = {
+  ...paginatorTemplate,
+  CurrentPageReport: ({ className }) => <span className={className}>Cargando…</span>,
 };
 
 function initialFilters(columns) {
@@ -63,6 +70,15 @@ function TableCell({ record, column }) {
   );
 }
 
+function SkeletonCell({ avatar }) {
+  return avatar ? (
+    <span className="crud-table__identity">
+      <Skeleton shape="circle" size="1.75rem" />
+      <Skeleton width="5rem" height="0.875rem" />
+    </span>
+  ) : <Skeleton width="80%" height="0.875rem" />;
+}
+
 export default function CrudTable({
   rows, columns, dataKey, loading, onRefresh, onAdd, addUnavailableReason,
   onEdit, additionalActions = [], readOnly = false,
@@ -74,7 +90,7 @@ export default function CrudTable({
   const hasColumnFilters = columns.some(({ field }) =>
     filters[field].constraints.some(({ value }) => value != null && value !== ''),
   );
-  const rowActions = [
+  const rowActions = readOnly ? additionalActions : [
     { key: 'view', label: 'Ver detalles', icon: 'pi pi-eye', onClick: setDetails },
     { key: 'edit', label: 'Editar', icon: 'pi pi-pencil', onClick: onEdit },
     ...additionalActions,
@@ -120,41 +136,42 @@ export default function CrudTable({
   );
 
   return (
-    <div className="crud-table">
+    <div className="crud-table" aria-busy={loading}>
       <DataTable
-        value={rows}
-        dataKey={dataKey}
+        value={loading ? skeletonRows.slice(0, rows.length || 5) : rows}
+        dataKey={loading ? 'id' : dataKey}
+        lazy={loading}
         filters={filters}
         onFilter={(event) => updateFilters(event.filters)}
         globalFilterFields={columns.map(({ field }) => field)}
         filterDisplay="menu"
         filterLocale="es-HN"
-        loading={loading}
-        emptyMessage={loading ? 'Cargando registros…' : 'No se encontraron registros.'}
+        emptyMessage="No se encontraron registros."
         paginator
         paginatorPosition="both"
         paginatorLeft={({ className }) => className === 'p-paginator-top' ? toolbarStart : null}
         paginatorRight={({ className }) => !readOnly && className === 'p-paginator-top' && (
           <span className="crud-table__add" title={addUnavailableReason ?? 'Agregar registro'}>
             <Button type="button" icon="pi pi-plus" outlined aria-label="Agregar registro"
-              disabled={!onAdd} onClick={onAdd} />
+              disabled={loading || !onAdd} onClick={onAdd} />
           </span>
         )}
-        first={Math.min(first, Math.max(0, Math.ceil(rows.length / pageSize) - 1) * pageSize)}
+        first={loading ? 0 : Math.min(first, Math.max(0, Math.ceil(rows.length / pageSize) - 1) * pageSize)}
         rows={pageSize}
         onPage={(event) => setFirst(event.first)}
-        paginatorTemplate={paginatorTemplate}
+        paginatorTemplate={loading ? loadingPaginatorTemplate : paginatorTemplate}
         responsiveLayout="scroll"
         tableStyle={{ minWidth: columns.length > 4 ? '42rem' : '24rem' }}
-        rowHover
+        rowHover={!loading}
       >
         {columns.map((column) => (
           <Column
             key={column.field}
             field={column.field}
             header={column.header}
-            body={(record) => <TableCell record={record} column={column} />}
+            body={(record) => loading ? <SkeletonCell avatar={column.avatar} /> : <TableCell record={record} column={column} />}
             sortable
+            sortableDisabled={loading}
             filter={showFilters}
             dataType={column.numeric ? 'numeric' : 'text'}
             filterType={column.numeric ? 'number' : 'text'}
@@ -165,16 +182,18 @@ export default function CrudTable({
             showFilterMatchModes={false}
           />
         ))}
-        {!readOnly && <Column header="Acciones" className="crud-table__actions" body={(record) => (
+        {rowActions.length > 0 && <Column header="Acciones" className="crud-table__actions" body={(record) => (
           <div className="crud-table__action-group">
-            {rowActions.map(({ key, label, icon, onClick }) => (
-              <span key={key} title={onClick ? label : `${label} no disponible`}>
+            {rowActions.map(({ key, label, icon, onClick, disabled }) => loading ? (
+              <Skeleton key={key} size="var(--row-action-size)" />
+            ) : (
+              <span key={key} title={onClick && !disabled?.(record) ? label : `${label} no disponible`}>
                 <Button
                   type="button"
                   icon={icon}
                   text
-                  aria-label={`${label} (registro ${record[dataKey]})`}
-                  disabled={!onClick}
+                  aria-label={record[dataKey] == null ? label : `${label} (registro ${record[dataKey]})`}
+                  disabled={!onClick || disabled?.(record)}
                   onClick={onClick ? () => onClick(record) : undefined}
                 />
               </span>

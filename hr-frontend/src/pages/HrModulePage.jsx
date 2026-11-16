@@ -4,7 +4,7 @@ import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
 import { InputText } from 'primereact/inputtext';
 import CrudTable from '../components/CrudTable';
-import { apiErrorMessage, changeDepartmentManager, createRecord, deleteRecord, listRecords, updateRecord } from './hrApi';
+import { apiErrorMessage, createRecord, deleteRecord, listRecords, updateRecord } from './hrApi';
 
 function employeeEditValues(employee) {
   const fullName = employee.fullName ?? '';
@@ -19,13 +19,15 @@ function employeeEditValues(employee) {
   };
 }
 
-function CatalogField({ field, value, onChange, disabled, notify, departmentName }) {
+function CatalogField({ field, value, onChange, disabled, notify }) {
   const { label, required, catalog } = field;
   const inputId = useId();
   const [result, setResult] = useState(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
+    if (catalog.options) return;
+
     const controller = new AbortController();
     listRecords(catalog, controller.signal)
       .then((options) => {
@@ -41,13 +43,11 @@ function CatalogField({ field, value, onChange, disabled, notify, departmentName
     return () => controller.abort();
   }, [catalog, attempt, label, notify]);
 
-  const records = result?.options ?? [];
-  const options = departmentName === undefined ? records
-    : records.filter((employee) => employee.departmentName === departmentName);
-  const emptyMessage = departmentName === undefined
-    ? 'Sin opciones registradas' : 'Sin empleados en este departamento';
-  const placeholder = !result ? 'Cargando opciones…'
-    : result.failed ? 'Opciones no disponibles'
+  const records = catalog.options ?? result?.options ?? [];
+  const options = catalog.filterOptions ? catalog.filterOptions(records) : records;
+  const emptyMessage = catalog.emptyMessage ?? 'Sin opciones registradas';
+  const placeholder = !catalog.options && !result ? 'Cargando opciones…'
+    : result?.failed ? 'Opciones no disponibles'
       : options.length ? 'Seleccionar' : emptyMessage;
 
   return (
@@ -81,10 +81,11 @@ function CatalogField({ field, value, onChange, disabled, notify, departmentName
   );
 }
 
-function RecordForm({ title, fields, submitLabel, submit, onClose, notify, initialValues, nameToReview, departmentName }) {
+function RecordForm({ title, fields, submitLabel = 'Guardar cambios', submit, onClose, notify, initialValues, nameToReview, confirmation }) {
   const [busy, setBusy] = useState(false);
   const submitInProgress = useRef(false);
   const [selections, setSelections] = useState(() => initialValues ?? {});
+  const confirmationMessage = confirmation?.(selections);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -106,6 +107,7 @@ function RecordForm({ title, fields, submitLabel, submit, onClose, notify, initi
       notify('warn', 'Campos obligatorios', 'Completa los campos marcados con un asterisco.');
       return;
     }
+    if (confirmation && !confirmationMessage) return;
 
     submitInProgress.current = true;
     setBusy(true);
@@ -135,7 +137,7 @@ function RecordForm({ title, fields, submitLabel, submit, onClose, notify, initi
           if (catalog) {
             return <CatalogField key={name} field={field} value={selections[name] ?? null}
               onChange={(value) => setSelections((current) => ({ ...current, [name]: value }))}
-              disabled={busy} notify={notify} departmentName={departmentName} />;
+              disabled={busy} notify={notify} />;
           }
 
           return (
@@ -146,9 +148,12 @@ function RecordForm({ title, fields, submitLabel, submit, onClose, notify, initi
             </label>
           );
         })}
+        {confirmation && (
+          <div className="crud-form__hint" aria-live="polite">{confirmationMessage}</div>
+        )}
         <div className="crud-form__actions">
           <Button type="button" label="Cancelar" outlined disabled={busy} onClick={onClose} />
-          <Button type="submit" label={submitLabel} loading={busy} />
+          <Button type="submit" label={submitLabel} loading={busy} disabled={Boolean(confirmation && !confirmationMessage)} />
         </div>
       </form>
     </Dialog>
@@ -162,9 +167,10 @@ export default function HrModulePage({ module, notify }) {
   const [dialog, setDialog] = useState(null);
   const [recordToEdit, setRecordToEdit] = useState(null);
   const [recordToDelete, setRecordToDelete] = useState(null);
-  const [departmentToManage, setDepartmentToManage] = useState(null);
+  const [activeAction, setActiveAction] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const deleteInProgress = useRef(false);
+  const rowActions = module.rowActions ?? [];
 
   useEffect(() => {
     const controller = new AbortController();
@@ -203,9 +209,16 @@ export default function HrModulePage({ module, notify }) {
     refresh();
   }
 
-  async function saveManager({ managerId }) {
-    await changeDepartmentManager(departmentToManage.departmentId, managerId);
-    notify('success', 'Responsable actualizado', 'El cambio de responsable se guardó correctamente.');
+  function openAction(action, record) {
+    const { prepareRequest, ...formProps } = action.form(record, rows);
+    setActiveAction({ action, recordId: record[module.dataKey], formProps, prepareRequest });
+  }
+
+  async function saveAction(values) {
+    const { action, recordId, prepareRequest } = activeAction;
+    const { body, params } = prepareRequest(values);
+    await updateRecord(action.endpoint, recordId, body, action.method, params);
+    notify('success', action.successSummary, action.successDetail);
     refresh();
   }
 
@@ -238,6 +251,9 @@ export default function HrModulePage({ module, notify }) {
     <section className="crud-page" aria-labelledby="crud-page-title">
       <h1 id="crud-page-title">{module.title}</h1>
       <p className="crud-page__description">{module.description}</p>
+      {rowActions.map(({ key, disabled, disabledMessage }) =>
+        disabledMessage && disabled && rows.some(disabled) && <p key={key} role="status">{disabledMessage}</p>
+      )}
       <CrudTable
         rows={rows}
         columns={module.columns}
@@ -248,9 +264,13 @@ export default function HrModulePage({ module, notify }) {
         onAdd={module.createFields ? () => setDialog('add') : undefined}
         onEdit={module.editFields ? setRecordToEdit : undefined}
         additionalActions={[
-          ...(module.changeManagerFields ? [{
-            key: 'change-manager', label: 'Cambiar responsable', icon: 'pi pi-user-edit', onClick: setDepartmentToManage,
-          }] : []),
+          ...rowActions.map((action) => ({
+            key: action.key,
+            label: action.label,
+            icon: action.icon,
+            disabled: action.disabled,
+            onClick: (record) => openAction(action, record),
+          })),
           ...(module.canDelete ? [{
             key: 'delete', label: 'Eliminar', icon: 'pi pi-trash', onClick: setRecordToDelete,
           }] : []),
@@ -269,11 +289,9 @@ export default function HrModulePage({ module, notify }) {
           submitLabel="Guardar cambios" submit={saveRecord} onClose={() => setRecordToEdit(null)}
           notify={notify} />
       )}
-      {departmentToManage && (
-        <RecordForm title={`Cambiar responsable de ${departmentToManage.departmentName}`}
-          fields={module.changeManagerFields} departmentName={departmentToManage.departmentName}
-          submitLabel="Guardar cambios" submit={saveManager} onClose={() => setDepartmentToManage(null)}
-          notify={notify} />
+      {activeAction && (
+        <RecordForm {...activeAction.formProps} submit={saveAction}
+          onClose={() => setActiveAction(null)} notify={notify} />
       )}
       <Dialog header={`Eliminar ${module.singular}`} className="crud-dialog"
         visible={Boolean(recordToDelete)} onHide={() => setRecordToDelete(null)}

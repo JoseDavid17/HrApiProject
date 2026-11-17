@@ -56,8 +56,8 @@ namespace HrApiProject.Services
                  HireDate = e.Hiredate,
                  Salary = e.Salary,
                  CommissionPct = e.CommissionPct,
-                 DepartmentName =  e.Department!.DepartmentName,
-                 JobTitle = e.Jobs!.JobTitle 
+                 DepartmentName = e.Department!.DepartmentName,
+                 JobTitle = e.Jobs!.JobTitle
              }).FirstOrDefaultAsync();
         }
 
@@ -69,17 +69,17 @@ namespace HrApiProject.Services
                 LastName = employeeCreateDto.LastName,
                 Email = employeeCreateDto.Email,
                 Hiredate = employeeCreateDto.HireDate,
-                Phone =employeeCreateDto.PhoneNumber,
-                CommissionPct= employeeCreateDto.CommissionPct,
+                Phone = employeeCreateDto.PhoneNumber,
+                CommissionPct = employeeCreateDto.CommissionPct,
                 Salary = employeeCreateDto.Salary,
                 DepartmentId = employeeCreateDto.DepartmentId,
                 JobId = employeeCreateDto.JobId
             };
 
-         
-            var yaexisteCorreo = await _context.Employees.CountAsync(e=> e.Email == employeeCreateDto.Email);
 
-            if( yaexisteCorreo > 0)
+            var yaexisteCorreo = await _context.Employees.CountAsync(e => e.Email == employeeCreateDto.Email);
+
+            if (yaexisteCorreo > 0)
             {
                 throw new BusinessRuleException($"El correo del empleado {employeeCreateDto.Email} ya le pertenece a un empleado");
             }
@@ -94,7 +94,7 @@ namespace HrApiProject.Services
         {
             var empleadoEntity = await _context.Employees.FindAsync(id);
 
-            if(empleadoEntity == null)
+            if (empleadoEntity == null)
             {
                 return false;
             }
@@ -115,7 +115,7 @@ namespace HrApiProject.Services
         {
             var empleado = await _context.Employees.FindAsync(id);
 
-            if(empleado == null)
+            if (empleado == null)
             {
                 return false;
             }
@@ -192,5 +192,71 @@ namespace HrApiProject.Services
             return true;
         }
 
+        public async Task<IEnumerable<EmployeeOrganizationNodeDto>> Organigrama(int? employeeid = null)
+        {
+
+             var employees = await _context.Employees
+            .GroupJoin(
+                _context.Jobs,
+                employee => employee.JobId,
+                job => job.JobId,
+                (employee, jobs) => new { Employee = employee, Jobs = jobs })
+            .SelectMany(
+                result => result.Jobs.DefaultIfEmpty(),
+                (result, job) => new
+                {
+                    result.Employee.EmployeeId,
+                    result.Employee.ManagerId,
+                    result.Employee.FirstName,
+                    result.Employee.LastName,
+                    JobTitle = job == null ? result.Employee.JobId : job.JobTitle
+                })
+            .OrderBy(employee => employee.LastName)
+            .ThenBy(employee => employee.FirstName)
+            .ThenBy(employee => employee.EmployeeId)
+            .ToListAsync();
+
+            var nodes = employees.Select(employee => new EmployeeOrganizationNodeDto
+            {
+                EmployeeId = employee.EmployeeId,
+                ManagerId = employee.ManagerId,
+                FullName = $"{employee.FirstName} {employee.LastName}".Trim(),
+                JobTitle = employee.JobTitle
+            }).ToList();
+
+            var reportsByManager = nodes.ToLookup(employee => employee.ManagerId);
+            var visited = new HashSet<int>();
+
+            void AddReports(EmployeeOrganizationNodeDto manager)
+            {
+                foreach (var employee in reportsByManager[manager.EmployeeId])
+                {
+                    if (visited.Add(employee.EmployeeId))
+                    {
+                        manager.Children.Add(employee);
+                        AddReports(employee);
+                    }
+                }
+            }
+
+            var roots = employeeid is int id
+                ? nodes.Where(employee => employee.EmployeeId == id)
+                : reportsByManager[null];
+
+            var organizationChart = new List<EmployeeOrganizationNodeDto>();
+
+            foreach (var root in roots)
+            {
+                if (visited.Add(root.EmployeeId))
+                {
+                    AddReports(root);
+                    organizationChart.Add(root);
+                }
+            }
+
+            return organizationChart;
+
+
+        }
     }
 }

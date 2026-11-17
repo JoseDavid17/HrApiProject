@@ -13,5 +13,7 @@ namespace HrApiProject.Services
         Task<IEnumerable<EmployeeSupervisorsDto>> Supervisores(int pagenumber, int pagesize);
 
         Task<bool> ChangeSupervisor(int employeeid, int supervisor, int departmentid);
+
+        Task<IEnumerable<EmployeeOrganizationNodeDto>> Organigrama(int? employeeid = null);
     }
 }

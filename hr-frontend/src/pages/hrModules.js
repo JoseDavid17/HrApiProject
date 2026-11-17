@@ -1,4 +1,5 @@
 import { createElement } from 'react';
+import OrganizationChartPage from './OrganizationChartPage';
 
 const column = (field, header, options = {}) => ({ field, header, ...options });
 const field = (name, label, options = {}) => ({ name, label, ...options });
@@ -125,6 +126,11 @@ export const hrModules = {
       }),
       ...employeePayFields,
     ],
+  },
+  '/empleados/organigrama': {
+    title: 'Organigrama de la empresa',
+    endpoint: 'Employee/OrganizationChart',
+    view: OrganizationChartPage,
   },
   '/empleados/supervisores': {
     title: 'Supervisores',

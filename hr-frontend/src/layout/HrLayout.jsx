@@ -26,6 +26,7 @@ const groups = [
       { label: 'Empleados', icon: 'id-card', children: [
         { label: 'Lista de empleados', path: '/empleados' },
         { label: 'Supervisores', icon: 'sitemap', path: '/empleados/supervisores' },
+        { label: 'Organigrama', icon: 'sitemap', path: '/empleados/organigrama' },
       ] },
       { label: 'Departamentos', icon: 'building', children: [{ label: 'Lista de departamentos', path: '/departamentos' }] },
       { label: 'Regiones', icon: 'globe', children: [{ label: 'Lista de regiones', path: '/regiones' }] },

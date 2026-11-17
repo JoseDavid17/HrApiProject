@@ -40,6 +40,7 @@ export default function App() {
   const next = isLogin ? new URLSearchParams(query).get('next') : null;
   const path = isLogin ? (Object.hasOwn(hrModules, next) ? next : '/') : location;
   const module = Object.hasOwn(hrModules, path) ? hrModules[path] : null;
+  const ModuleView = module?.view ?? HrModulePage;
 
   useEffect(() => {
     if (!token && !isLogin) {
@@ -64,7 +65,7 @@ export default function App() {
           replacePath('/login');
         }}>
           {module ? (
-            <HrModulePage key={path} module={module} notify={notify} />
+            <ModuleView key={path} module={module} notify={notify} />
           ) : path === '/' ? (
             <>
               <div className="hr-placeholder" aria-hidden="true" />

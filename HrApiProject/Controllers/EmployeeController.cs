@@ -125,6 +125,29 @@ namespace HrApiProject.Controllers
             return NoContent();
         }
 
+        [HttpGet("OrganizationChart")]
+        public async Task<IActionResult> GetOrganizationChart([FromQuery] int? employeeid = null)
+        {
+            if (employeeid is <= 0)
+            {
+                return BadRequest(new
+                {
+                    message = "El ID del empleado debe ser mayor que cero."
+                });
+            }
+
+            var organigrama = await _employeeService.Organigrama(employeeid);
+
+            if (employeeid.HasValue && !organigrama.Any())
+            {
+                return NotFound(new
+                {
+                    message = $"No se encontró al empleado con ID {employeeid}."
+                });
+            }
+
+            return Ok(organigrama);
+        }
 
     }
 }

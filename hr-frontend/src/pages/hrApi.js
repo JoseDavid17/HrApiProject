@@ -59,7 +59,7 @@ api.interceptors.response.use(undefined, (error) => {
   return Promise.reject(error);
 });
 
-export async function listRecords({ endpoint, paginated }, signal) {
+export async function listRecords({ endpoint, paginated, params }, signal) {
   const records = [];
   let pageNumber = 1;
   let page;
@@ -67,7 +67,7 @@ export async function listRecords({ endpoint, paginated }, signal) {
   do {
     const { data } = await api.get(`/${endpoint}`, {
       signal,
-      params: paginated ? { pageNumber, pageSize } : undefined,
+      params: paginated ? { ...params, pageNumber, pageSize } : params,
     });
     if (!Array.isArray(data)) throw new Error('La API no devolvió una lista de registros.');
     page = data;

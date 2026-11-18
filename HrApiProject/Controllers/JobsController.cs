@@ -70,13 +70,13 @@ namespace HrApiProject.Controllers
             return NoContent();
         }
 
-        [HttpPut]
+        [HttpPut("{id}")]
 
         public async Task<ActionResult> UpdateJob([FromRoute] string id, [FromBody] UpdateJobsDTO updateJobsDTO)
         {
-            var job = _jobservice.updateJob(id, updateJobsDTO);
+            var job = await _jobservice.updateJob(id, updateJobsDTO);
 
-            if( job == null)
+            if(!job)
             {
                 return NotFound(new { message = $"No se encontró un job para {id}" });
             }

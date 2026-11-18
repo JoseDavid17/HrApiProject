@@ -147,6 +147,7 @@
 
 .hr-row,
 .hr-subrow {
+  text-decoration: none;
   display: flex;
   width: 100%;
   min-width: 0;
@@ -180,11 +181,13 @@
 .hr-row:hover,
 .hr-subrow:hover,
 .hr-row[aria-current="true"],
+.hr-row[aria-current="page"],
 .hr-subrow[aria-current="true"] {
   background: #e4e4e7;
 }
 
 .hr-row[aria-current="true"],
+.hr-row[aria-current="page"],
 .hr-subrow[aria-current="true"] {
   font-weight: 500;
 }

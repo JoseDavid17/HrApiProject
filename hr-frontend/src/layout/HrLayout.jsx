@@ -28,6 +28,8 @@ const groups = [
         { label: 'Supervisores', icon: 'sitemap', path: '/empleados/supervisores' },
         { label: 'Organigrama', icon: 'sitemap', path: '/empleados/organigrama' },
       ] },
+      { label: 'Historial laboral', icon: 'history', path: '/empleados/historial' },
+      { label: 'Puestos', icon: 'briefcase', path: '/puestos' },
       { label: 'Departamentos', icon: 'building', children: [{ label: 'Lista de departamentos', path: '/departamentos' }] },
       { label: 'Regiones', icon: 'globe', children: [{ label: 'Lista de regiones', path: '/regiones' }] },
       { label: 'Países', icon: 'flag', children: [{ label: 'Lista de países', path: '/paises' }] },
@@ -70,29 +72,31 @@ function HrSidebarMenu({ collapsed, activeItems, activePath, openGroups, onSelec
             </div>
 
             <ul className="hr-list">
-              {items.map(({ label, icon, badge, children }) => {
+              {items.map(({ label, icon, badge, children, path }) => {
                 const hasActiveChild = children?.some((child) => child.path === activePath);
                 const expanded = Boolean(children && (openGroups[label] ?? hasActiveChild) && !collapsed);
                 const submenuId = `hr-submenu-${label.toLowerCase()}`;
-                const isActive = activeItems.includes(label);
+                const isActive = path ? path === activePath : activeItems.includes(label);
+                const Row = path ? 'a' : 'button';
 
                 return (
                   <li className="hr-item" key={label}>
-                    <button
-                      type="button"
+                    <Row
+                      type={path ? undefined : 'button'}
+                      href={path ? `#${path}` : undefined}
                       className="hr-row"
-                      aria-current={isActive ? 'true' : undefined}
+                      aria-current={isActive ? (path ? 'page' : 'true') : undefined}
                       aria-expanded={children ? expanded : undefined}
                       aria-controls={children ? submenuId : undefined}
                       title={collapsed ? label : undefined}
-                      onClick={() => children ? onToggleGroup(label, expanded) : onSelect(label)}
+                      onClick={path ? onNavigate : () => children ? onToggleGroup(label, expanded) : onSelect(label)}
                     >
                       <Icon name={icon} />
                       <span className="hr-label">{label}</span>
                       {children && <Icon name="chevron-down" className="hr-chevron" />}
                       {badge && <span className="hr-badge">{badge}</span>}
-                      {!children && !badge && <Icon name="ellipsis-v" className="hr-action" />}
-                    </button>
+                      {!children && !badge && !path && <Icon name="ellipsis-v" className="hr-action" />}
+                    </Row>
                     {children && (
                       <ul className="hr-submenu" id={submenuId} hidden={!expanded}>
                         {children.map((child) => child.path ? (

@@ -31,6 +31,22 @@ const departmentManagerField = field('managerId', 'Responsable', {
   catalog: { endpoint: 'Employee', paginated: true, labelField: 'fullName', valueField: 'id' },
 });
 
+const jobFields = [
+  field('jobTitle', 'Nombre del puesto', { required: true, maxLength: 35 }),
+  field('minSalary', 'Salario mínimo', { type: 'number', step: 'any' }),
+  field('maxSalary', 'Salario máximo', { type: 'number', step: 'any' }),
+];
+
+const locationFields = [
+  field('streetAddress', 'Dirección', { maxLength: 40 }),
+  field('postalCode', 'Código postal', { maxLength: 12 }),
+  field('city', 'Ciudad', { required: true, maxLength: 30 }),
+  field('stateProvince', 'Estado o provincia', { maxLength: 25 }),
+  field('countryId', 'País', {
+    catalog: { endpoint: 'Country', paginated: true, labelField: 'countryName', valueField: 'countryId' },
+  }),
+];
+
 function supervisorForm(employee, rows) {
   const supervisors = new Map();
 
@@ -83,6 +99,29 @@ function supervisorForm(employee, rows) {
 }
 
 export const hrModules = {
+  '/puestos': {
+    title: 'Puestos',
+    singular: 'puesto',
+    recordLabel: 'jobTitle',
+    description: 'Gestiona los puestos y sus rangos salariales.',
+    endpoint: 'Jobs',
+    dataKey: 'jobId',
+    paginated: true,
+    updateMethod: 'PUT',
+    canDelete: true,
+    columns: [
+      column('jobId', 'Código'),
+      column('jobTitle', 'Nombre del puesto'),
+      column('minSalary', 'Salario mínimo', { numeric: true, format: (value) => salaryFormat.format(value) }),
+      column('maxSalary', 'Salario máximo', { numeric: true, format: (value) => salaryFormat.format(value) }),
+    ],
+    createFields: [
+      field('jobId', 'Código del puesto', { required: true, maxLength: 10 }),
+      ...jobFields.map((jobField) => ({ ...jobField, required: true })),
+    ],
+    editFields: jobFields,
+    editValues: ({ jobTitle, minSalary, maxSalary }) => ({ jobTitle, minSalary, maxSalary }),
+  },
   '/empleados': {
     title: 'Empleados',
     singular: 'empleado',
@@ -125,6 +164,32 @@ export const hrModules = {
         catalog: { endpoint: 'Departments', paginated: true, labelField: 'departmentName', valueField: 'departmentId' },
       }),
       ...employeePayFields,
+    ],
+  },
+  '/empleados/historial': {
+    title: 'Historial laboral',
+    description: 'Consulta los períodos laborales registrados automáticamente al cambiar de puesto o departamento.',
+    endpoint: 'JobHistory',
+    paginated: true,
+    readOnly: true,
+    columns: [
+      column('fullName', 'Empleado', { avatar: true }),
+      column('empId', 'ID del empleado', { numeric: true }),
+      column('jobTitle', 'Puesto'),
+      column('jobId', 'Código del puesto'),
+      column('departmentName', 'Departamento'),
+      column('startDate', 'Inicio del período', {
+        format: (value) => value.replace(
+          /^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2}:\d{2})(?:\.\d+)?$/,
+          '$3/$2/$1 $4',
+        ),
+      }),
+      column('endDate', 'Fin del período', {
+        format: (value) => value.replace(
+          /^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2}:\d{2})(?:\.\d+)?$/,
+          '$3/$2/$1 $4',
+        ),
+      }),
     ],
   },
   '/empleados/organigrama': {
@@ -207,6 +272,11 @@ export const hrModules = {
   },
   '/regiones': {
     title: 'Regiones',
+    updateMethod: 'PUT',
+    editFields: [field('regionName', 'Región', { required: true, maxLength: 25 })],
+    editValues: ({ name }) => ({ regionName: name }),
+    recordLabel: 'name',
+    canDelete: true,
     singular: 'región',
     description: 'Consulta las regiones que agrupan los países registrados.',
     endpoint: 'Region',
@@ -217,6 +287,16 @@ export const hrModules = {
     ],
   },
   '/paises': {
+    recordLabel: 'countryName',
+    canDelete: true,
+    updateMethod: 'PATCH',
+    editFields: [
+      field('countryName', 'País', { maxLength: 40 }),
+      field('regionId', 'Región', {
+        catalog: { endpoint: 'Region', labelField: 'name', valueField: 'id' },
+      }),
+    ],
+    editValues: ({ countryName, regionId }) => ({ countryName, regionId }),
     title: 'Países',
     singular: 'país',
     description: 'Consulta los países registrados y la región a la que pertenecen.',
@@ -232,11 +312,23 @@ export const hrModules = {
     createFields: [
       field('countryId', 'Código de país', { required: true, minLength: 2, maxLength: 2 }),
       field('countryName', 'País', { required: true, maxLength: 40 }),
-      field('regionId', 'ID de región', { type: 'number' }),
+      field('regionId', 'Región', {
+        catalog: { endpoint: 'Region', labelField: 'name', valueField: 'id' },
+      }),
     ],
   },
   '/locaciones': {
     title: 'Locaciones',
+    singular: 'locación',
+    recordLabel: 'city',
+    canDelete: true,
+    updateMethod: 'PUT',
+    createFields: locationFields,
+    editFields: locationFields,
+    editValues: ({ streetAddress, postalCode, city, stateProvince, countryId, country }) => ({
+      streetAddress, postalCode, city, stateProvince,
+      countryId: countryId ?? country?.countryId,
+    }),
     description: 'Consulta las direcciones y ciudades de las locaciones registradas.',
     endpoint: 'Locations',
     dataKey: 'locationID',

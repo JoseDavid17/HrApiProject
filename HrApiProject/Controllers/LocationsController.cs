@@ -2,6 +2,7 @@
 using HrApiProject.Services;
 using HrApiProject.DTOs;
 
+
 namespace HrApiProject.Controllers
 {
     [Route("api/[controller]")]
@@ -35,6 +36,29 @@ namespace HrApiProject.Controllers
             return Ok(locations);
         }
 
+        [HttpGet("{id}")]
+
+        public async Task<ActionResult<LocationDto>> ObtenerLocationId([FromRoute] int id)
+        {
+            var succes = await _locationService.GetLocationByid(id);
+
+            if (succes == null)
+            {
+                return NotFound(new { message = $"No se encontró la location con el {id}" });
+            }
+
+            return Ok(succes);
+        }
+
+        [HttpPost]
+
+        public async Task<ActionResult<LocationDto>> CrearLocation([FromBody] LocationCreateDto locationCreateDto)
+        {
+            var crearLocation = await _locationService.CreateLocation(locationCreateDto);
+
+            return CreatedAtAction(nameof(ObtenerLocationId),new {Id = crearLocation.LocationID}, crearLocation);
+        }
+
         [HttpGet("ContarPaisesCiudad")]
 
         public async Task<ActionResult<IEnumerable<dynamic>>> GetCityCountryByCountry()
@@ -52,8 +76,35 @@ namespace HrApiProject.Controllers
             var locations = _locationService.GetLocationsCustum();
 
             return Ok(locations);
-
         }
 
+        [HttpPut("{id}")]
+
+        public async Task<ActionResult> EditarLocation([FromRoute] int id , [FromBody] LocationCreateDto locationCreateDto)
+        {
+
+            var succes = await _locationService.UpdateLocation(id, locationCreateDto);
+
+            if (!succes)
+            {
+                return NotFound(new { message = $"No se encontró una location con el {id} para actualizarlo" });
+            }
+
+            return NoContent();
+        }
+
+        [HttpDelete("{id}")]
+
+        public async Task<ActionResult> BorrarLocation([FromRoute] int id)
+        {
+            var succes = await _locationService.DeleteLocation(id);
+
+            if (!succes)
+            {
+                return NotFound(new { message = $"No se encontró una location con el {id} para actualizarlo" });
+            }
+
+            return NoContent();
+        }
     }
 }

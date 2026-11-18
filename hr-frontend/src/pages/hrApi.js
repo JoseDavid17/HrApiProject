@@ -104,6 +104,6 @@ export function apiErrorMessage(error, fallback) {
     .filter((message) => typeof message === 'string' && message.trim());
   if (messages.length) return [...new Set(messages)].join('\n');
 
-  return [data?.detail, data?.message, data?.title]
+  return [data?.detail, data?.message, data?.title, error.response ? undefined : error.message]
     .find((message) => typeof message === 'string' && message.trim()) ?? fallback;
 }

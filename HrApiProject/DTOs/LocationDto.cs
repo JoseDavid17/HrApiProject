@@ -11,6 +11,8 @@ namespace HrApiProject.DTOs
         public string City { get; set; } = null!;
         public string? StateProvince { get; set; }
 
+        public string? CountryId { get; set; }
+
         public Country? Country { get; set; }
 
     }

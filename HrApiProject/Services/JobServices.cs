@@ -95,7 +95,8 @@ namespace HrApiProject.Services
 
         public async Task<bool> updateJob(string id, UpdateJobsDTO updateJobsDTO)
         {
-            var Existejob = await _context.Jobs.CountAsync(j => j.JobTitle == updateJobsDTO.JobTitle);
+            var Existejob = await _context.Jobs.CountAsync(
+                j => j.JobId != id && j.JobTitle == updateJobsDTO.JobTitle);
 
             if (Existejob > 0)
             {

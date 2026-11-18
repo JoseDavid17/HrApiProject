@@ -74,6 +74,7 @@ namespace HrApiProject.Services
               {
                   CountryId = c.CountryId,
                   CountryName = c.CountryName,
+                  RegionId = c.RegionId,
                   Region = new RegionDto
                   {
                       Name = c.Region!.RegionName
@@ -89,6 +90,7 @@ namespace HrApiProject.Services
             {
                 CountryId=c.CountryId,
                 CountryName=c.CountryName,
+                RegionId = c.RegionId,
                 Region = new RegionDto
                 {
                     Name = c.Region!.RegionName
@@ -100,7 +102,7 @@ namespace HrApiProject.Services
         public async Task<bool> updateCountry(string id, UpdateCountryDto countryUpdateDto)
         {
             var existeCountry = await _context.Countries
-                .CountAsync(c => c.CountryName == countryUpdateDto.CountryName);
+                .CountAsync(c => c.CountryId != id && c.CountryName == countryUpdateDto.CountryName);
 
             if (existeCountry > 0)
             {

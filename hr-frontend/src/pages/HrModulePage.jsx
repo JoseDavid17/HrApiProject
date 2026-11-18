@@ -204,6 +204,7 @@ export default function HrModulePage({ module, notify }) {
   }
 
   async function saveRecord(values) {
+    module.validateUpdate?.(values, recordToEdit);
     await updateRecord(module.endpoint, recordToEdit[module.dataKey], values, module.updateMethod);
     notify('success', 'Registro actualizado', 'Los cambios se guardaron correctamente.');
     refresh();

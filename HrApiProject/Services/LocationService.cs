@@ -4,6 +4,7 @@ using HrApiProject.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using HrApiProject.Exceptions;
+using System.Linq.Expressions;
 
 namespace HrApiProject.Services
 {
@@ -21,7 +22,7 @@ namespace HrApiProject.Services
             int registroaSaltar = (pageNumber - 1) * pageSize;
 
             return await _context.Locations
-              .OrderBy(l=>l.LocationID)
+              .OrderBy(l => l.LocationID)
               .Skip(registroaSaltar)
               .Take(pageSize)
              .Select(l => new LocationDto
@@ -32,7 +33,7 @@ namespace HrApiProject.Services
                  StreetAddress = l.StreetAddress,
                  PostalCode = l.PostalCode,
                  CountryId = l.CountryId,
-
+                 CountryName = l.Country!.CountryName!
              }).ToListAsync();
 
             //return await _context.Locations
@@ -114,6 +115,13 @@ namespace HrApiProject.Services
             if(location == null)
             {
                 return false;
+            }
+
+            var existeLocation = await _context.Locations.CountAsync(l => l.LocationID == id);
+
+            if(existeLocation > 0)
+            {
+                throw new BusinessRuleException("No se puede eliminar la locacion porque tiene departamentos asociados");
             }
 
             _context.Remove(location);

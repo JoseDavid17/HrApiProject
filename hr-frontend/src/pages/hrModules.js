@@ -339,6 +339,9 @@ export const hrModules = {
       column('stateProvince', 'Estado o provincia'),
       column('postalCode', 'Código postal'),
       column('locationID', 'ID', { numeric: true }),
+      column('countryId', 'Código país'),
+      column('countryName', 'País'),
+
     ],
   },
 };

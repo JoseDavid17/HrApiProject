@@ -120,6 +120,13 @@ namespace HrApiProject.Services
                 return false;
             }
 
+            var existeEmployee = await _context.JobHistory.CountAsync(j => j.EmployeeId == id);
+
+            if(existeEmployee > 0)
+            {
+                throw new BusinessRuleException("No se puede eliminar el empleado porque tiene historial asociado");
+            }
+
             _context.Employees.Remove(empleado);
             await _context.SaveChangesAsync();
 

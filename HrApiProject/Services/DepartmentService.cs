@@ -111,9 +111,23 @@ namespace HrApiProject.Services
         {
             var depto = await _context.Departments.FindAsync(id);
 
-            if(depto == null)
+            if (depto == null)
             {
                 return false;
+            }
+
+            var existeEmpleado = await _context.Employees.CountAsync(e => e.DepartmentId == id);
+
+            if (existeEmpleado > 0)
+            {
+                throw new BusinessRuleException($"No se puede eliminar el departamento porque tiene {(existeEmpleado == 1 ? "un empleado asociado" : $"{existeEmpleado} empleados asociados")}");
+            }
+
+            var existeManager = await _context.Employees.CountAsync(e => e.EmployeeId == id);
+
+            if(depto.ManagerId is not null)
+            {
+                throw new BusinessRuleException("No se puede eliminar el departamento porque tiene un manager asociado");
             }
 
             _context.Departments.Remove(depto);

@@ -13,16 +13,12 @@ const groups = [
     label: 'Navegación',
     items: [
       { label: 'General', icon: 'home' },
-      { label: 'Bandeja de entrada', icon: 'inbox', badge: '12' },
-      { label: 'Buscar', icon: 'search' },
-      { label: 'Notificaciones', icon: 'bell', badge: '3' },
     ],
   },
   {
     label: 'Recursos humanos',
     action: true,
     items: [
-      { label: 'Indicadores', icon: 'chart-bar', children: ['Resumen', 'Reportes', 'Actividad reciente'] },
       { label: 'Empleados', icon: 'id-card', children: [
         { label: 'Lista de empleados', path: '/empleados' },
         { label: 'Supervisores', icon: 'sitemap', path: '/empleados/supervisores' },
@@ -34,17 +30,6 @@ const groups = [
       { label: 'Regiones', icon: 'globe', children: [{ label: 'Lista de regiones', path: '/regiones' }] },
       { label: 'Países', icon: 'flag', children: [{ label: 'Lista de países', path: '/paises' }] },
       { label: 'Locaciones', icon: 'map-marker', children: [{ label: 'Lista de locaciones', path: '/locaciones' }] },
-      { label: 'Equipo', icon: 'users' },
-      { label: 'Calendario', icon: 'calendar' },
-      { label: 'Documentos', icon: 'folder', children: ['Compartidos', 'Privados', 'Archivados'] },
-    ],
-  },
-  {
-    label: 'Nómina',
-    items: [
-      { label: 'Pagos', icon: 'credit-card' },
-      { label: 'Órdenes de pago', icon: 'file' },
-      { label: 'Beneficios', icon: 'star' },
     ],
   },
 ];

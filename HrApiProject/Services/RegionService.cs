@@ -1,7 +1,7 @@
 ﻿using HrApiProject.Data;
 using HrApiProject.Domain;
 using HrApiProject.DTOs;
-using HrApiProject.Middlewares;
+using HrApiProject.Exceptions;
 using Microsoft.EntityFrameworkCore;
 
 
@@ -42,6 +42,13 @@ namespace HrApiProject.Services
             if(regionEntity == null)
             {
                 return false;
+            }
+
+            var paisesAsociados = await _context.Countries.CountAsync(r=>r.RegionId == id);
+
+            if(paisesAsociados > 0)
+            {
+                throw new BusinessRuleException("No se puede eliminar la región porque tiene países asociados");
             }
 
             _context.Regions.Remove(regionEntity);

@@ -13,6 +13,8 @@ namespace HrApiProject.DTOs
 
         public string? CountryId { get; set; }
 
+        public string CountryName { get; set; } = null!;
+
         public Country? Country { get; set; }
 
     }

@@ -2,7 +2,6 @@
 using HrApiProject.DTOs;
 using HrApiProject.Services;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
 
 namespace HrApiProject.Controllers
 {

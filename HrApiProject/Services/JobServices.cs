@@ -55,6 +55,13 @@ namespace HrApiProject.Services
                 return false;
             }
 
+            var existeEmpleado = await _context.Employees.CountAsync(e => e.JobId == id);
+
+            if(existeEmpleado > 0)
+            {
+                throw new BusinessRuleException("No se puede eliminar el puesto porque tiene empleados asociados");
+            }
+
             _context.Remove(jobEntity);
 
             await _context.SaveChangesAsync();

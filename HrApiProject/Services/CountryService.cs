@@ -55,6 +55,13 @@ namespace HrApiProject.Services
                 return false;
             }
 
+            var existePaises = await _context.Locations.CountAsync(c => c.CountryId == CountryId);
+
+            if(existePaises > 0)
+            {
+                throw new BusinessRuleException("No se puede borrar el país porque tiene locaciones asociadas");
+            }
+
             _context.Remove(deleteCountry);
             await _context.SaveChangesAsync();
 

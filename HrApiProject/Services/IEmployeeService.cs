@@ -15,5 +15,7 @@ namespace HrApiProject.Services
         Task<bool> ChangeSupervisor(int employeeid, int supervisor, int departmentid);
 
         Task<IEnumerable<EmployeeOrganizationNodeDto>> Organigrama(int? employeeid = null);
+
+        Task<bool> ChangeDepartment(int employeeid, int departmentid, int supervisorid, string jobid, decimal? salary = null);
     }
 }

@@ -98,6 +98,69 @@ function supervisorForm(employee, rows) {
   };
 }
 
+function departmentTransferForm(employee) {
+  const selected = (catalogs, name, value, key) => catalogs[name]?.find((item) => item[key] === value);
+
+  return {
+    title: `Cambiar departamento de ${employee.fullName}`,
+    submitLabel: 'Confirmar traslado',
+    fields: [
+      field('departmentid', 'Departamento destino', {
+        required: true,
+        catalog: {
+          endpoint: 'Departments', paginated: true, labelField: 'departmentName', valueField: 'departmentId',
+          filterOptions: (departments) => departments.filter((department) => employee.departmentId != null
+            ? department.departmentId !== employee.departmentId
+            : department.departmentName !== employee.departmentName),
+          emptyMessage: 'Sin otros departamentos disponibles',
+        },
+      }),
+      field('supervisorid', 'Nuevo supervisor', {
+        required: true,
+        dependsOn: 'departmentid',
+        catalog: {
+          endpoint: 'Employee/Supervisores', paginated: true,
+          labelField: 'fullSupervisorName', valueField: 'supervisorId',
+          filterOptions: (rows, values, catalogs) => {
+            const department = selected(catalogs, 'departmentid', values.departmentid, 'departmentId');
+            if (!department) return [];
+
+            const supervisors = new Map();
+            for (const candidate of rows) {
+              if (Number.isInteger(candidate.supervisorId) && candidate.supervisorId !== employee.id &&
+                  candidate.supervisorDepartmentId === department.departmentId) {
+                supervisors.set(candidate.supervisorId, candidate);
+              }
+            }
+
+            return [...supervisors.values()].sort((first, second) =>
+              first.fullSupervisorName.localeCompare(second.fullSupervisorName, 'es-HN'));
+          },
+          emptyMessage: 'Sin supervisores disponibles en este departamento',
+        },
+      }),
+      field('jobid', 'Nuevo puesto', {
+        required: true,
+        catalog: { endpoint: 'Jobs', paginated: true, labelField: 'jobTitle', valueField: 'jobId' },
+      }),
+      field('salary', 'Nuevo salario (opcional)', { type: 'number', step: '0.01' }),
+    ],
+    validate: (values, catalogs) => {
+      const job = selected(catalogs, 'jobid', values.jobid, 'jobId');
+      if (!job || job.minSalary == null || job.maxSalary == null || job.minSalary > job.maxSalary) {
+        throw new Error('El puesto debe tener un rango salarial válido antes de realizar el traslado.');
+      }
+      const salary = values.salary ?? employee.salary;
+      if (salary == null || !Number.isFinite(salary) || salary <= 0 || salary < job.minSalary || salary > job.maxSalary) {
+        throw new Error(`Indica un salario entre ${salaryFormat.format(job.minSalary)} y ${salaryFormat.format(job.maxSalary)}. El salario actual se conserva únicamente si cumple ese rango.`);
+      }
+    },
+    prepareRequest: ({ departmentid, supervisorid, jobid, salary }) => ({
+      params: { departmentid, supervisorid, jobid, ...(salary == null ? {} : { salary }) },
+    }),
+  };
+}
+
 export const hrModules = {
   '/puestos': {
     title: 'Puestos',
@@ -130,6 +193,16 @@ export const hrModules = {
     endpoint: 'Employee',
     dataKey: 'id',
     paginated: true,
+    rowActions: [{
+      key: 'change-department',
+      label: 'Cambiar departamento',
+      icon: 'pi pi-arrow-right-arrow-left',
+      endpoint: 'Employee/ChangeDepartment',
+      method: 'PATCH',
+      successSummary: 'Departamento actualizado',
+      successDetail: 'El traslado del empleado se guardó correctamente.',
+      form: departmentTransferForm,
+    }],
     columns: [
       column('fullName', 'Nombre completo', { avatar: true }),
       column('jobTitle', 'Puesto'),

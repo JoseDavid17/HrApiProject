@@ -265,5 +265,136 @@ namespace HrApiProject.Services
 
 
         }
+
+        public async Task<bool> ChangeDepartment(int employeeid, int departmentid, int supervisorid, string jobid, decimal? salary = null)
+        {
+            var employee = await _context.Employees.FindAsync(employeeid);
+
+            if(employee is null)
+            {
+                return false;
+            }
+
+            if(employeeid == 100)
+            {
+                throw new BusinessRuleException("No puedes cambiar de departamento al CEO de la empresa");
+            }
+
+            if(employee.DepartmentId == departmentid)
+            {
+                throw new BusinessRuleException("El empleado ya pertenece al departamento seleccionado");
+            }
+
+            var department = await _context.Departments.FindAsync(departmentid);
+
+            if(department is null)
+            {
+                throw new BusinessRuleException("El departamento seleccionado no existe");
+            }
+
+            if (employeeid == supervisorid)
+            {
+                throw new BusinessRuleException("El empleado no puede ser su propio supervisor");
+            }
+
+            var supervisor = await _context.Employees.FindAsync(supervisorid);
+
+            if(supervisor is null)
+            {
+                throw new BusinessRuleException("El supervisor no existe");
+            }
+
+            if (supervisor.DepartmentId != departmentid)
+            {
+                throw new BusinessRuleException("El supervisor debe pertenecer al departamento destino.");
+            }
+
+            // evitar colocar al empleado bajo uno de sus subordinados
+            var visited = new HashSet<int>();
+            int? currentSupervisorId = supervisorid;
+
+            while (currentSupervisorId.HasValue)
+            {
+                int currentId = currentSupervisorId.Value;
+
+                if (currentId == employeeid)
+                {
+                    throw new BusinessRuleException("El supervisor seleccionado depende del empleado. " + "El traslado crearía un ciclo en la jerarquía.");
+                }
+
+                if (!visited.Add(currentId))
+                {
+                    throw new BusinessRuleException(
+                        "La jerarquía del supervisor contiene un ciclo " + "que debe corregirse antes del traslado.");
+                }
+
+                var currentSupervisor = await _context.Employees
+                    .FindAsync(currentId);
+
+                if (currentSupervisor is null)
+                {
+                    throw new BusinessRuleException("La jerarquía contiene un supervisor inexistente.");
+                }
+
+                currentSupervisorId = currentSupervisor.ManagerId;
+            }
+
+            if (string.IsNullOrWhiteSpace(jobid))
+            {
+                throw new BusinessRuleException("Debes seleccionar el nuevo puesto.");
+            }
+
+            var job = await _context.Jobs.FindAsync(jobid.Trim());
+
+            if (job is null)
+            {
+                throw new BusinessRuleException("El puesto seleccionado no existe.");
+            }
+
+            if (job.MinSalary is null || job.MaxSalary is null)
+            {
+                throw new BusinessRuleException("El puesto seleccionado debe tener un salario mínimo " + "y máximo configurados.");
+            }
+
+            decimal minimum = job.MinSalary.Value;
+            decimal maximum = job.MaxSalary.Value;
+
+            if (minimum > maximum)
+            {
+                throw new BusinessRuleException("El rango salarial del puesto está mal configurado.");
+            }
+
+            decimal? currentSalary = employee.Salary.HasValue ? Convert.ToDecimal(employee.Salary.Value) : null;
+
+            decimal? resultingSalary = salary ?? currentSalary;
+
+            if (resultingSalary is null)
+            {
+                throw new BusinessRuleException("Debes indicar un salario para realizar el traslado.");
+            }
+
+            if (resultingSalary.Value <= 0)
+            {
+                throw new BusinessRuleException("El salario debe ser mayor que cero.");
+            }
+
+            if (resultingSalary.Value < minimum || resultingSalary.Value > maximum)
+            {
+                throw new BusinessRuleException($"El salario debe estar entre {minimum:N2} y " + $"{maximum:N2} para el puesto {job.JobTitle}. " + "Indica un salario dentro de ese rango.");
+            }
+
+            employee.DepartmentId = department.DepartmentId;
+            employee.ManagerId = supervisor.EmployeeId;
+            employee.JobId = job.JobId;
+
+            if (salary.HasValue)
+            {
+                employee.Salary = Convert.ToDouble(salary.Value);
+            }
+
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
     }
 }

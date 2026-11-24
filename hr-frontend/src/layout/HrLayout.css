@@ -349,19 +349,6 @@
   text-align: center;
 }
 
-.hr-placeholder {
-  border-radius: 0.5rem;
-  background: var(--hr-surface);
-}
-
-.hr-placeholder:first-child {
-  height: 12rem;
-}
-
-.hr-placeholder:last-child {
-  flex: 1;
-}
-
 .hr-layout .hr-drawer-mask.p-sidebar-mask {
   position: fixed;
 }

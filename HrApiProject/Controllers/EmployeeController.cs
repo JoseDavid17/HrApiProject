@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using HrApiProject.DTOs;
+﻿using HrApiProject.DTOs;
 using HrApiProject.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace HrApiProject.Controllers
 {
@@ -125,7 +125,7 @@ namespace HrApiProject.Controllers
         }
 
         [HttpGet("OrganizationChart")]
-        public async Task<IActionResult> GetOrganizationChart([FromQuery] int? employeeid = null)
+        public async Task<ActionResult> GetOrganizationChart([FromQuery] int? employeeid = null)
         {
             if (employeeid is <= 0)
             {
@@ -146,6 +146,20 @@ namespace HrApiProject.Controllers
             }
 
             return Ok(organigrama);
+        }
+
+        [HttpPatch("ChangeDepartment/{id}")]
+
+        public async Task<ActionResult> ChangeDepartment([FromRoute] int id, [FromQuery] int departmentid, [FromQuery] int supervisorid, [FromQuery] string jobid, [FromQuery] decimal? salary = null)
+        {
+            var success = await _employeeService.ChangeDepartment(id, departmentid,supervisorid, jobid, salary);
+
+            if (!success)
+            {
+                return NotFound(new{message = $"No se encontró el empleado con ID {id}."});
+            }
+
+            return NoContent();
         }
 
     }

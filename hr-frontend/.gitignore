@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
+# Copia preparada para trasladar el README a la raíz del repositorio.
+README.root.local.md
 
 # Editor directories and files
 .vscode/*

@@ -1,14 +1,15 @@
-﻿using HrApiProject.Services;
-using HrApiProject.DTOs;
-using Microsoft.AspNetCore.Mvc;
+﻿using HrApiProject.DTOs;
+using HrApiProject.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace HrApiProject.Controllers
 {
-    
-    [Route("api/[controller]")]
-    [ApiController]
     [Authorize]
+    [Route("api/[controller]")]
+    [EnableRateLimiting("GeneralPolicy")]
+    [ApiController]
     public class RegionController : ControllerBase
     {
         private readonly IRegionService _regionService;

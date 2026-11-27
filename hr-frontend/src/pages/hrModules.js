@@ -239,6 +239,22 @@ export const hrModules = {
       ...employeePayFields,
     ],
   },
+  '/empleados/contrataciones-coincidentes': {
+    title: 'Contrataciones coincidentes',
+    description: 'Consulta las parejas de empleados que comparten la misma fecha de contratación.',
+    endpoint: 'Employee/SameBirthday',
+    readOnly: true,
+    columns: [
+      column('employee1', 'Empleado 1', { avatar: true }),
+      column('employee1HireDate', 'Fecha de contratación · Empleado 1', {
+        format: (value) => value.replace(/^(\d{4})-(\d{2})-(\d{2})(?:T.*)?$/, '$3/$2/$1'),
+      }),
+      column('employee2', 'Empleado 2', { avatar: true }),
+      column('employee2HireDate', 'Fecha de contratación · Empleado 2', {
+        format: (value) => value.replace(/^(\d{4})-(\d{2})-(\d{2})(?:T.*)?$/, '$3/$2/$1'),
+      }),
+    ],
+  },
   '/empleados/historial': {
     title: 'Historial laboral',
     description: 'Consulta los períodos laborales registrados automáticamente al cambiar de puesto o departamento.',
@@ -388,6 +404,26 @@ export const hrModules = {
       field('regionId', 'Región', {
         catalog: { endpoint: 'Region', labelField: 'name', valueField: 'id' },
       }),
+    ],
+  },
+  '/paises/regiones': {
+    title: 'Países por región',
+    description: 'Consulta cuántos países están registrados en cada región.',
+    endpoint: 'Country/PaisesRegiones',
+    dataKey: 'regionName',
+    readOnly: true,
+    mapResponse: (data) => {
+      if (!data || Array.isArray(data) || typeof data !== 'object' ||
+          Object.values(data).some((count) => !Number.isInteger(count) || count < 0)) {
+        throw new Error('La API no devolvió un resumen de países por región válido.');
+      }
+      return Object.entries(data)
+        .map(([regionName, countryCount]) => ({ regionName, countryCount }))
+        .sort((a, b) => a.regionName.localeCompare(b.regionName, 'es'));
+    },
+    columns: [
+      column('regionName', 'Región'),
+      column('countryCount', 'Cantidad de países', { numeric: true }),
     ],
   },
   '/locaciones': {

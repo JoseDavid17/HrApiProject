@@ -1,13 +1,15 @@
 ﻿using HrApiProject.Domain;
 using HrApiProject.DTOs;
-using Microsoft.AspNetCore.Mvc;
 using HrApiProject.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace HrApiProject.Controllers
 {
     [Authorize]
     [Route("api/[controller]")]
+    [EnableRateLimiting("GeneralPolicy")]
     [ApiController]
     public class DepartmentsController : ControllerBase
     {

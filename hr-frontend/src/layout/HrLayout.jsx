@@ -21,6 +21,7 @@ const groups = [
     items: [
       { label: 'Empleados', icon: 'id-card', children: [
         { label: 'Lista de empleados', path: '/empleados' },
+        { label: 'Contrataciones coincidentes', icon: 'calendar', path: '/empleados/contrataciones-coincidentes' },
         { label: 'Supervisores', icon: 'sitemap', path: '/empleados/supervisores' },
         { label: 'Organigrama', icon: 'sitemap', path: '/empleados/organigrama' },
       ] },
@@ -28,7 +29,10 @@ const groups = [
       { label: 'Puestos', icon: 'briefcase', path: '/puestos' },
       { label: 'Departamentos', icon: 'building', children: [{ label: 'Lista de departamentos', path: '/departamentos' }] },
       { label: 'Regiones', icon: 'globe', children: [{ label: 'Lista de regiones', path: '/regiones' }] },
-      { label: 'Países', icon: 'flag', children: [{ label: 'Lista de países', path: '/paises' }] },
+      { label: 'Países', icon: 'flag', children: [
+        { label: 'Lista de países', path: '/paises' },
+        { label: 'Países por región', icon: 'globe', path: '/paises/regiones' },
+      ] },
       { label: 'Locaciones', icon: 'map-marker', children: [{ label: 'Lista de locaciones', path: '/locaciones' }] },
     ],
   },

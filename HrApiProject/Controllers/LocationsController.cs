@@ -1,11 +1,15 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using HrApiProject.DTOs;
 using HrApiProject.Services;
-using HrApiProject.DTOs;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 
 namespace HrApiProject.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
+    [EnableRateLimiting("GeneralPolicy")]
     [ApiController]
   
     public class LocationsController : ControllerBase

@@ -2,12 +2,14 @@
 using HrApiProject.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace HrApiProject.Controllers
 {
     [Authorize]
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
+    [EnableRateLimiting("GeneralPolicy")]
     public class EmployeeController : ControllerBase
     {
 
@@ -160,6 +162,22 @@ namespace HrApiProject.Controllers
             }
 
             return NoContent();
+        }
+
+        [HttpGet("SameBirthday")]
+        public async Task<ActionResult> SameBirthday([FromQuery] int pageNumber = 1, [FromQuery] int pageSize=50)
+        {
+            if(pageNumber < 1)
+            {
+                pageNumber = 1;
+            }
+            if (pageSize > 50)
+            {
+                pageNumber = 50;
+            }
+
+            var employees = await _employeeService.SameHireDate(pageNumber,pageSize);
+            return Ok(employees);
         }
 
     }

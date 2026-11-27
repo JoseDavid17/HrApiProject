@@ -396,5 +396,34 @@ namespace HrApiProject.Services
 
             return true;
         }
+
+        public async Task<IEnumerable<dynamic>> SameHireDate(int pageNumber, int pageSize)
+        {
+            int paginacion = (pageNumber-1)*pageSize;
+
+            var results = await _context.Employees
+                .AsNoTracking()
+                .Join(
+                    _context.Employees,
+                    employee => employee.Hiredate,
+                    colleague => colleague.Hiredate,
+                    (employee, colleague) => new { employee, colleague }
+                )
+                .Where(pair => pair.employee.EmployeeId > pair.colleague.EmployeeId)
+                .OrderBy(pair => pair.employee.EmployeeId)
+                .ThenBy(pair => pair.colleague.EmployeeId)
+                .Select(pair => new
+                {
+                    Employee1 = pair.employee.FirstName + " " + pair.employee.LastName,
+                    Employee1HireDate = pair.employee.Hiredate,
+                    Employee2 = pair.colleague.FirstName + " " + pair.colleague.LastName,
+                    Employee2HireDate = pair.colleague.Hiredate
+                })
+                .Skip(paginacion)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return results;
+        }
     }
 }

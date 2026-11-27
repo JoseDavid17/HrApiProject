@@ -159,11 +159,16 @@ builder.Services.AddScoped<IJobService, JobServices>();
 
 // cors
 
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>()
+    ?? ["http://localhost:5173"];
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("ReactFrontEnd", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins(allowedOrigins)
         .AllowAnyHeader()
         .AllowAnyMethod();
     });
@@ -212,6 +217,10 @@ if (app.Environment.IsDevelopment())
 app.UseForwardedHeaders();
 
 app.UseHttpsRedirection();
+if (app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseRouting();   
 
@@ -222,5 +231,8 @@ app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
+    .AllowAnonymous();
 
 app.Run();

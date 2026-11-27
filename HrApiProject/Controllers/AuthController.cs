@@ -1,5 +1,6 @@
 ﻿using HrApiProject.DTOs;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -22,6 +23,7 @@ namespace HrApiProject.Controllers
         }
 
         [HttpPost("login")]
+        [EnableRateLimiting("LoginPolicy")] 
 
         public IActionResult Login(LoginDto loginDto)
         {

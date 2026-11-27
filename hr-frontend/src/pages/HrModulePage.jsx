@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
@@ -19,7 +19,7 @@ function employeeEditValues(employee) {
   };
 }
 
-function CatalogField({ field, value, onChange, disabled, notify }) {
+function CatalogField({ field, value, onChange, disabled, notify, values, catalogs, onLoad }) {
   const { label, required, catalog } = field;
   const inputId = useId();
   const [result, setResult] = useState(null);
@@ -31,7 +31,10 @@ function CatalogField({ field, value, onChange, disabled, notify }) {
     const controller = new AbortController();
     listRecords(catalog, controller.signal)
       .then((options) => {
-        if (!controller.signal.aborted) setResult({ options });
+        if (!controller.signal.aborted) {
+          setResult({ options });
+          onLoad(field.name, options);
+        }
       })
       .catch((error) => {
         if (!controller.signal.aborted) {
@@ -41,10 +44,11 @@ function CatalogField({ field, value, onChange, disabled, notify }) {
         }
       });
     return () => controller.abort();
-  }, [catalog, attempt, label, notify]);
+  }, [catalog, attempt, label, notify, field.name, onLoad]);
 
   const records = catalog.options ?? result?.options ?? [];
-  const options = catalog.filterOptions ? catalog.filterOptions(records) : records;
+  const options = catalog.filterOptions ? catalog.filterOptions(records, values, catalogs) : records;
+  const dependencyMissing = field.dependsOn && values[field.dependsOn] == null;
   const emptyMessage = catalog.emptyMessage ?? 'Sin opciones registradas';
   const placeholder = !catalog.options && !result ? 'Cargando opciones…'
     : result?.failed ? 'Opciones no disponibles'
@@ -66,10 +70,10 @@ function CatalogField({ field, value, onChange, disabled, notify }) {
         filterLocale="es-HN"
         filterPlaceholder={`Buscar ${label.toLowerCase()}`}
         emptyFilterMessage="No se encontraron coincidencias."
-        placeholder={placeholder}
+        placeholder={dependencyMissing ? 'Completa primero el campo anterior' : placeholder}
         panelClassName="crud-catalog-panel"
         showClear={field.allowClear ?? !required}
-        disabled={disabled || !options.length}
+        disabled={disabled || dependencyMissing || !options.length}
       />
       {result?.failed && (
         <button className="crud-form__catalog-retry" type="button" disabled={disabled} onClick={() => {
@@ -81,11 +85,23 @@ function CatalogField({ field, value, onChange, disabled, notify }) {
   );
 }
 
-function RecordForm({ title, fields, submitLabel = 'Guardar cambios', submit, onClose, notify, initialValues, nameToReview, confirmation }) {
+function RecordForm({ title, fields, submitLabel = 'Guardar cambios', submit, onClose, notify, initialValues, nameToReview, confirmation, validate }) {
   const [busy, setBusy] = useState(false);
   const submitInProgress = useRef(false);
   const [selections, setSelections] = useState(() => initialValues ?? {});
-  const confirmationMessage = confirmation?.(selections);
+  const [catalogs, setCatalogs] = useState({});
+  const onCatalogLoad = useCallback((name, options) => {
+    setCatalogs((current) => ({ ...current, [name]: options }));
+  }, []);
+  const confirmationMessage = confirmation?.(selections, catalogs);
+
+  function changeSelection(name, value) {
+    setSelections((current) => ({
+      ...current,
+      ...Object.fromEntries(fields.filter((item) => item.dependsOn === name).map((item) => [item.name, null])),
+      [name]: value,
+    }));
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -112,6 +128,7 @@ function RecordForm({ title, fields, submitLabel = 'Guardar cambios', submit, on
     submitInProgress.current = true;
     setBusy(true);
     try {
+      validate?.(values, catalogs);
       await submit(values);
       onClose();
     } catch (requestError) {
@@ -136,7 +153,8 @@ function RecordForm({ title, fields, submitLabel = 'Guardar cambios', submit, on
           const { name, label, catalog, type = 'text', ...attributes } = field;
           if (catalog) {
             return <CatalogField key={name} field={field} value={selections[name] ?? null}
-              onChange={(value) => setSelections((current) => ({ ...current, [name]: value }))}
+              onChange={(value) => changeSelection(name, value)}
+              values={selections} catalogs={catalogs} onLoad={onCatalogLoad}
               disabled={busy} notify={notify} />;
           }
 

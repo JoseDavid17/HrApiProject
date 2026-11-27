@@ -59,7 +59,7 @@ api.interceptors.response.use(undefined, (error) => {
   return Promise.reject(error);
 });
 
-export async function listRecords({ endpoint, paginated, params }, signal) {
+export async function listRecords({ endpoint, paginated, params, mapResponse }, signal) {
   const records = [];
   let pageNumber = 1;
   let page;
@@ -69,8 +69,8 @@ export async function listRecords({ endpoint, paginated, params }, signal) {
       signal,
       params: paginated ? { ...params, pageNumber, pageSize } : params,
     });
-    if (!Array.isArray(data)) throw new Error('La API no devolvió una lista de registros.');
-    page = data;
+    page = mapResponse ? mapResponse(data) : data;
+    if (!Array.isArray(page)) throw new Error('La API no devolvió una lista de registros.');
     records.push(...page);
     pageNumber += 1;
   } while (paginated && page.length === pageSize);

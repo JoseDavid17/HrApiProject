@@ -98,6 +98,69 @@ function supervisorForm(employee, rows) {
   };
 }
 
+function departmentTransferForm(employee) {
+  const selected = (catalogs, name, value, key) => catalogs[name]?.find((item) => item[key] === value);
+
+  return {
+    title: `Cambiar departamento de ${employee.fullName}`,
+    submitLabel: 'Confirmar traslado',
+    fields: [
+      field('departmentid', 'Departamento destino', {
+        required: true,
+        catalog: {
+          endpoint: 'Departments', paginated: true, labelField: 'departmentName', valueField: 'departmentId',
+          filterOptions: (departments) => departments.filter((department) => employee.departmentId != null
+            ? department.departmentId !== employee.departmentId
+            : department.departmentName !== employee.departmentName),
+          emptyMessage: 'Sin otros departamentos disponibles',
+        },
+      }),
+      field('supervisorid', 'Nuevo supervisor', {
+        required: true,
+        dependsOn: 'departmentid',
+        catalog: {
+          endpoint: 'Employee/Supervisores', paginated: true,
+          labelField: 'fullSupervisorName', valueField: 'supervisorId',
+          filterOptions: (rows, values, catalogs) => {
+            const department = selected(catalogs, 'departmentid', values.departmentid, 'departmentId');
+            if (!department) return [];
+
+            const supervisors = new Map();
+            for (const candidate of rows) {
+              if (Number.isInteger(candidate.supervisorId) && candidate.supervisorId !== employee.id &&
+                  candidate.supervisorDepartmentId === department.departmentId) {
+                supervisors.set(candidate.supervisorId, candidate);
+              }
+            }
+
+            return [...supervisors.values()].sort((first, second) =>
+              first.fullSupervisorName.localeCompare(second.fullSupervisorName, 'es-HN'));
+          },
+          emptyMessage: 'Sin supervisores disponibles en este departamento',
+        },
+      }),
+      field('jobid', 'Nuevo puesto', {
+        required: true,
+        catalog: { endpoint: 'Jobs', paginated: true, labelField: 'jobTitle', valueField: 'jobId' },
+      }),
+      field('salary', 'Nuevo salario (opcional)', { type: 'number', step: '0.01' }),
+    ],
+    validate: (values, catalogs) => {
+      const job = selected(catalogs, 'jobid', values.jobid, 'jobId');
+      if (!job || job.minSalary == null || job.maxSalary == null || job.minSalary > job.maxSalary) {
+        throw new Error('El puesto debe tener un rango salarial válido antes de realizar el traslado.');
+      }
+      const salary = values.salary ?? employee.salary;
+      if (salary == null || !Number.isFinite(salary) || salary <= 0 || salary < job.minSalary || salary > job.maxSalary) {
+        throw new Error(`Indica un salario entre ${salaryFormat.format(job.minSalary)} y ${salaryFormat.format(job.maxSalary)}. El salario actual se conserva únicamente si cumple ese rango.`);
+      }
+    },
+    prepareRequest: ({ departmentid, supervisorid, jobid, salary }) => ({
+      params: { departmentid, supervisorid, jobid, ...(salary == null ? {} : { salary }) },
+    }),
+  };
+}
+
 export const hrModules = {
   '/puestos': {
     title: 'Puestos',
@@ -130,6 +193,16 @@ export const hrModules = {
     endpoint: 'Employee',
     dataKey: 'id',
     paginated: true,
+    rowActions: [{
+      key: 'change-department',
+      label: 'Cambiar departamento',
+      icon: 'pi pi-arrow-right-arrow-left',
+      endpoint: 'Employee/ChangeDepartment',
+      method: 'PATCH',
+      successSummary: 'Departamento actualizado',
+      successDetail: 'El traslado del empleado se guardó correctamente.',
+      form: departmentTransferForm,
+    }],
     columns: [
       column('fullName', 'Nombre completo', { avatar: true }),
       column('jobTitle', 'Puesto'),
@@ -164,6 +237,22 @@ export const hrModules = {
         catalog: { endpoint: 'Departments', paginated: true, labelField: 'departmentName', valueField: 'departmentId' },
       }),
       ...employeePayFields,
+    ],
+  },
+  '/empleados/contrataciones-coincidentes': {
+    title: 'Contrataciones coincidentes',
+    description: 'Consulta las parejas de empleados que comparten la misma fecha de contratación.',
+    endpoint: 'Employee/SameBirthday',
+    readOnly: true,
+    columns: [
+      column('employee1', 'Empleado 1', { avatar: true }),
+      column('employee1HireDate', 'Fecha de contratación · Empleado 1', {
+        format: (value) => value.replace(/^(\d{4})-(\d{2})-(\d{2})(?:T.*)?$/, '$3/$2/$1'),
+      }),
+      column('employee2', 'Empleado 2', { avatar: true }),
+      column('employee2HireDate', 'Fecha de contratación · Empleado 2', {
+        format: (value) => value.replace(/^(\d{4})-(\d{2})-(\d{2})(?:T.*)?$/, '$3/$2/$1'),
+      }),
     ],
   },
   '/empleados/historial': {
@@ -315,6 +404,26 @@ export const hrModules = {
       field('regionId', 'Región', {
         catalog: { endpoint: 'Region', labelField: 'name', valueField: 'id' },
       }),
+    ],
+  },
+  '/paises/regiones': {
+    title: 'Países por región',
+    description: 'Consulta cuántos países están registrados en cada región.',
+    endpoint: 'Country/PaisesRegiones',
+    dataKey: 'regionName',
+    readOnly: true,
+    mapResponse: (data) => {
+      if (!data || Array.isArray(data) || typeof data !== 'object' ||
+          Object.values(data).some((count) => !Number.isInteger(count) || count < 0)) {
+        throw new Error('La API no devolvió un resumen de países por región válido.');
+      }
+      return Object.entries(data)
+        .map(([regionName, countryCount]) => ({ regionName, countryCount }))
+        .sort((a, b) => a.regionName.localeCompare(b.regionName, 'es'));
+    },
+    columns: [
+      column('regionName', 'Región'),
+      column('countryCount', 'Cantidad de países', { numeric: true }),
     ],
   },
   '/locaciones': {

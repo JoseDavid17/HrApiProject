@@ -1,9 +1,15 @@
 using HrApiProject.Data;
 using HrApiProject.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Globalization;
+using System.Net;
+using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +22,94 @@ builder.Services.AddControllers();
 
 // Herramienta nativa de Microsoft para OpenAPI (.NET 9+)
 builder.Services.AddOpenApi();
+
+// Configuración del servicio de Rate Limiter
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode =
+        StatusCodes.Status429TooManyRequests;
+
+    // cada IP tiene su propio límite.
+    options.AddPolicy("LoginPolicy", context =>
+    {
+        var ip = context.Connection.RemoteIpAddress?
+            .ToString() ?? "unknown";
+
+        var key = builder.Environment.IsDevelopment()
+        ? $"login:{context.Connection.RemoteIpAddress}"
+        : "login:demo-shared";
+
+
+        return RateLimitPartition.GetFixedWindowLimiter(partitionKey: key, factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        });
+
+
+    });
+
+    // cada usuario autenticado tiene su propio límite.
+    options.AddPolicy("GeneralPolicy", context =>
+    {
+        var userId = context.User.FindFirstValue(
+            ClaimTypes.NameIdentifier)
+            ?? context.User.Identity?.Name;
+
+        var ip = context.Connection.RemoteIpAddress?
+            .ToString() ?? "unknown";
+
+        var key = context.User.Identity?.IsAuthenticated == true
+            && !string.IsNullOrWhiteSpace(userId)
+                ? $"user:{userId}"
+                : $"ip:{ip}";
+
+        return RateLimitPartition.GetTokenBucketLimiter(
+            partitionKey: key,
+            factory: _ => new TokenBucketRateLimiterOptions
+            {
+                TokenLimit = 60,
+                TokensPerPeriod = 10,
+                ReplenishmentPeriod = TimeSpan.FromSeconds(10),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            });
+    });
+
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        var response = context.HttpContext.Response;
+
+        response.StatusCode =
+            StatusCodes.Status429TooManyRequests;
+
+        int? retryAfterSeconds = null;
+
+        if (context.Lease.TryGetMetadata(
+            MetadataName.RetryAfter, out var retryAfter))
+        {
+            retryAfterSeconds = (int)Math.Clamp(
+                Math.Ceiling(retryAfter.TotalSeconds),
+                1,
+                int.MaxValue);
+
+            response.Headers["Retry-After"] =
+                retryAfterSeconds.Value.ToString(
+                    CultureInfo.InvariantCulture);
+        }
+
+        response.Headers["Cache-Control"] = "no-store";
+
+        await response.WriteAsJsonAsync(new
+        {
+            message = "Has realizado demasiadas solicitudes. "
+                + "Espera unos momentos e inténtalo nuevamente.",
+            retryAfterSeconds
+        }, cancellationToken: cancellationToken);
+    };
+});
 
 // configuracion jwt
 
@@ -89,6 +183,22 @@ builder.Services.AddCors(options =>
 //            JsonIgnoreCondition.WhenWritingNull;
 //    });
 
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor |
+        ForwardedHeaders.XForwardedProto;
+
+    var proxies = builder.Configuration
+        .GetSection("ReverseProxy:KnownProxies")
+        .Get<string[]>() ?? [];
+
+    foreach (var proxy in proxies)
+    {
+        options.KnownProxies.Add(IPAddress.Parse(proxy));
+    }
+});
+
 var app = builder.Build();
 
 app.UseMiddleware<HrApiProject.Middlewares.GlobalExceptionMiddleware>();
@@ -104,14 +214,20 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseForwardedHeaders();
+
+app.UseHttpsRedirection();
 if (app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
 
+app.UseRouting();   
+
 app.UseCors("ReactFrontEnd");
 
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapControllers();

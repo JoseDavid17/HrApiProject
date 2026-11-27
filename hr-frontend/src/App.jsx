@@ -3,6 +3,7 @@ import { Toast } from 'primereact/toast';
 import HrLayout from './layout/HrLayout';
 import LoginPage from './pages/LoginPage';
 import HrModulePage from './pages/HrModulePage';
+import HrHomePage from './pages/HrHomePage';
 import { hrModules } from './pages/hrModules';
 import { getSessionToken, sessionExpiresAt, signOut, subscribeToSession } from './pages/hrApi';
 import './components/HrToast.css';
@@ -67,10 +68,7 @@ export default function App() {
           {module ? (
             <ModuleView key={path} module={module} notify={notify} />
           ) : path === '/' ? (
-            <>
-              <div className="hr-placeholder" aria-hidden="true" />
-              <div className="hr-placeholder" aria-hidden="true" />
-            </>
+            <HrHomePage key={token} />
           ) : (
             <section>
               <h1>Página no encontrada</h1>

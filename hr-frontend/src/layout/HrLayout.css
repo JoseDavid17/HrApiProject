@@ -240,7 +240,7 @@
 }
 
 .hr-subrow {
-  height: 1.75rem;
+  height: 2.85rem;
   text-decoration: none;
 }
 
@@ -347,19 +347,6 @@
   color: var(--hr-muted, #52525b);
   font-size: 0.75rem;
   text-align: center;
-}
-
-.hr-placeholder {
-  border-radius: 0.5rem;
-  background: var(--hr-surface);
-}
-
-.hr-placeholder:first-child {
-  height: 12rem;
-}
-
-.hr-placeholder:last-child {
-  flex: 1;
 }
 
 .hr-layout .hr-drawer-mask.p-sidebar-mask {
